@@ -934,6 +934,7 @@ VALUE rb_float_new_in_heap(double);
 #define RSTRING_EMBED_LEN_MAX RSTRING_EMBED_LEN_MAX
 #define RSTRING_FSTR RSTRING_FSTR
 enum {
+	RSTRING_ROPE = RUBY_FL_USER0,
     RSTRING_NOEMBED = RUBY_FL_USER1,
     RSTRING_EMBED_LEN_MASK = (RUBY_FL_USER2|RUBY_FL_USER3|RUBY_FL_USER4|
 			      RUBY_FL_USER5|RUBY_FL_USER6),
@@ -954,18 +955,28 @@ struct RString {
 		VALUE shared;
 	    } aux;
 	} heap;
+	struct {
+		long len; /* XXX: needed? */
+		VALUE left,
+			  right;
+	} rope;
 	char ary[RSTRING_EMBED_LEN_MAX + 1];
     } as;
 };
+char *get_cstr_from_rope(VALUE rope);
 #define RSTRING_EMBED_LEN(str) \
      (long)((RBASIC(str)->flags >> RSTRING_EMBED_LEN_SHIFT) & \
             (RSTRING_EMBED_LEN_MASK >> RSTRING_EMBED_LEN_SHIFT))
+#define RSTRING_IS_ROPE(str) \
+	FL_TEST_RAW((str), RSTRING_ROPE)
 #define RSTRING_LEN(str) \
-    (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
+    (RSTRING_IS_ROPE(str) ? RSTRING(str)->as.rope.len : \
+     !(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      RSTRING_EMBED_LEN(str) : \
      RSTRING(str)->as.heap.len)
-#define RSTRING_PTR(str) \
-    (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
+#define RSTRING_PTR(str)\
+    (RSTRING_IS_ROPE(str) ? get_cstr_from_rope(str) : \
+     !(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      RSTRING(str)->as.ary : \
      RSTRING(str)->as.heap.ptr)
 #define RSTRING_END(str) \

@@ -65,6 +65,7 @@ VALUE rb_cSymbol;
 
 /* FLAGS of RString
  *
+ * 0:     STR_IS_ROPE
  * 1:     RSTRING_NOEMBED
  * 2:     STR_SHARED (== ELTS_SHARED)
  * 2-6:   RSTRING_EMBED_LEN (5 bits == 32)
@@ -75,6 +76,12 @@ VALUE rb_cSymbol;
  * 18:    STR_NOFREE
  * 19:    STR_FAKESTR
  */
+
+#include <stdio.h>
+#define STR_IS_ROPE FL_USER0
+
+#define FL_SET_ROPE(str) FL_SET_RAW((str), STR_IS_ROPE)
+#define STR_UNSET_ROPE(str) FL_UNSET((str), STR_IS_ROPE)
 
 #define RUBY_MAX_CHAR_LEN 16
 #define STR_TMPLOCK FL_USER7
@@ -164,6 +171,131 @@ VALUE rb_cSymbol;
 #else
 #define SHARABLE_SUBSTRING_P(beg, len, end) 1
 #endif
+
+#include <stdarg.h>
+
+#define elog(...) \ 
+//printf(__VA_ARGS__)
+
+static inline VALUE str_alloc(VALUE klass);
+static inline VALUE empty_str_alloc(VALUE klass);
+static VALUE str_new_frozen(VALUE klass, VALUE orig);
+static VALUE
+rb_get_immutable_value(VALUE str)
+{
+    Check_Type(str, T_STRING);
+    if (FL_TEST_RAW(str, STR_NOEMBED))
+    {
+	if (FL_TEST_RAW(str, STR_IS_ROPE))
+	    elog("%s: already rope\n", __func__);
+	else if (FL_TEST_RAW(str, FL_FREEZE))
+	    elog("%s: already frozen\n", __func__);
+	else if (FL_TEST_RAW(str, STR_SHARED))
+	{
+	    //assert(OBJ_FROZEN(str));
+	    elog("%s: already shared\n", __func__);
+	}
+	else
+	{
+	    elog("%s: share '%s'\n", __func__, RSTRING_PTR(str));
+	    /* shared string should be frozen, right? */
+	    //rb_obj_freeze(str);
+	    FL_SET_RAW(str, STR_SHARED);
+	}
+
+	return str;
+    }
+    else
+    {
+	enum {embed_size = RSTRING_EMBED_LEN_MAX + 1};
+	const VALUE flag_mask =
+	    RSTRING_NOEMBED | RSTRING_EMBED_LEN_MASK |
+	    ENC_CODERANGE_MASK | ENCODING_MASK |
+	    FL_TAINT | FL_FREEZE
+	    ;
+	VALUE flags = FL_TEST_RAW(str, flag_mask);
+	VALUE dup = str_alloc(rb_obj_class(str));
+
+	elog("%s: copy embeded string '%s'\n", __func__, RSTRING_PTR(str));
+	MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary,
+		char, embed_size);
+	FL_SET_RAW(dup, flags & ~FL_FREEZE);
+	return dup;
+    }
+}
+
+static long
+rope_collect_cstr(VALUE str, char *ret_buf, long i) {
+    if (!FL_TEST_RAW(str, STR_IS_ROPE)) {
+	elog("%s: len=%ld, i=%ld, str='%s'\n", __func__, RSTRING_LEN(str), i, RSTRING_PTR(str));
+
+	memcpy(ret_buf + i, RSTRING_PTR(str), RSTRING_LEN(str)); /* except NUL */
+	return i + RSTRING_LEN(str);
+    }
+
+    elog("%s: L ", __func__);
+    i = rope_collect_cstr(RSTRING(str)->as.rope.left, ret_buf, i);
+    elog("%s: R ", __func__);
+    return rope_collect_cstr(RSTRING(str)->as.rope.right, ret_buf, i);
+}
+
+static VALUE
+rb_str_from_rope(VALUE rope)
+{
+    /* Be careful to call RSTRING_PTR(rope) in this function
+     * since this function is called in RSTRING_PTR for Rope */
+    int termlen = 1; /* It may be inappropriate */
+    long len = RSTRING(rope)->as.rope.len;
+    char *ptr;
+
+    Check_Type(rope, T_STRING);
+    if (!FL_TEST_RAW(rope, STR_IS_ROPE))
+	rb_bug("%s: Passed VALUE is not rope", __func__);
+    assert(len > RSTRING_EMBED_LEN_MAX);
+
+    ptr = ALLOC_N(char, len + termlen);
+    rope_collect_cstr(rope, ptr, 0);
+    TERM_FILL(ptr + len, termlen);
+    STR_SET_LEN(rope, len);
+    STR_UNSET_ROPE(rope);
+
+    RSTRING(rope)->as.heap.aux.capa = len;
+    RSTRING(rope)->as.heap.ptr = ptr;
+    STR_SET_NOEMBED(rope); /* Already be set ? */
+
+    elog("%s: '%s'\n", __func__, RSTRING_PTR(rope)); /* Now rope is not Rope */
+
+    return rope;
+}
+
+char *
+get_cstr_from_rope(VALUE rope)
+{
+    VALUE v = rb_str_from_rope(rope);
+    return RSTRING_PTR(v);
+}
+
+static VALUE
+rb_rope_new(VALUE left, VALUE right)
+{
+    VALUE im_left = rb_get_immutable_value(left),
+	  im_right = rb_get_immutable_value(right);
+    VALUE rope = empty_str_alloc(rb_cString); // Is it an appropriate alloc function?
+
+    OBJ_FREEZE(rope);
+    FL_SET_RAW(rope, STR_IS_ROPE);
+
+    RB_OBJ_WRITE(rope, &RSTRING(rope)->as.rope.left, im_left);
+    RB_OBJ_WRITE(rope, &RSTRING(rope)->as.rope.right, im_right);
+    RSTRING(rope)->as.rope.len = RSTRING_LEN(left) + RSTRING_LEN(right);
+    FL_SET_ROPE(rope);
+    STR_SET_NOEMBED(rope);
+
+    elog("%s: llen = %ld, rlen = %ld, len=%ld\n", __func__, RSTRING_LEN(left), RSTRING_LEN(right), RSTRING_LEN(rope));
+
+    return rope;
+}
+
 
 static VALUE str_replace_shared_without_enc(VALUE str2, VALUE str);
 static VALUE str_new_shared(VALUE klass, VALUE str);
@@ -1727,25 +1859,40 @@ VALUE
 rb_str_plus(VALUE str1, VALUE str2)
 {
     VALUE str3;
-    rb_encoding *enc;
     char *ptr1, *ptr2, *ptr3;
+    rb_encoding *enc;
     long len1, len2;
 
-    StringValue(str2);
+    ptr1 = RSTRING_PTR(str1);
+    ptr2 = RSTRING_PTR(str2);
+    len1 = RSTRING_LEN(str1);
+    len2 = RSTRING_LEN(str2);
     enc = rb_enc_check_str(str1, str2);
-    RSTRING_GETMEM(str1, ptr1, len1);
-    RSTRING_GETMEM(str2, ptr2, len2);
-    str3 = rb_str_new(0, len1+len2);
-    ptr3 = RSTRING_PTR(str3);
-    memcpy(ptr3, ptr1, len1);
-    memcpy(ptr3+len1, ptr2, len2);
-    TERM_FILL(&ptr3[len1+len2], rb_enc_mbminlen(enc));
+    elog("%s: '%s'(%ld) + '%s'(%ld)\n", __func__, ptr1, len1, ptr2, len2);
+
+    if (len1 + len2 > RSTRING_EMBED_LEN_MAX)
+    {
+	elog("rope concat\n");
+	str3 = rb_rope_new(str1, str2);
+    }
+    else
+    {
+	elog("string concat\n");
+	StringValue(str2);
+	RSTRING_GETMEM(str1, ptr1, len1);
+	RSTRING_GETMEM(str2, ptr2, len2);
+	str3 = rb_str_new(0, len1+len2);
+	ptr3 = RSTRING_PTR(str3);
+	memcpy(ptr3, ptr1, len1);
+	memcpy(ptr3+len1, ptr2, len2);
+	TERM_FILL(&ptr3[len1+len2], rb_enc_mbminlen(enc));
+	ENCODING_CODERANGE_SET(str3, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
+    }
 
     FL_SET_RAW(str3, OBJ_TAINTED_RAW(str1) | OBJ_TAINTED_RAW(str2));
-    ENCODING_CODERANGE_SET(str3, rb_enc_to_index(enc),
-			   ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
     RB_GC_GUARD(str1);
     RB_GC_GUARD(str2);
+
     return str3;
 }
 
@@ -1846,7 +1993,8 @@ static inline void
 str_modifiable(VALUE str)
 {
     rb_check_lockedtmp(str);
-    rb_check_frozen(str);
+    if (!FL_TEST(str, STR_IS_ROPE)) /* Rope will become modifiable string at the point of RSTRING_PTR */
+	rb_check_frozen(str);
 }
 
 static inline int
@@ -4583,7 +4731,8 @@ rb_str_sub_bang(int argc, VALUE *argv, VALUE str)
                 repl = rb_obj_as_string(repl);
             }
 	    str_mod_check(str, p, len);
-	    rb_check_frozen(str);
+	    if (!FL_TEST(str, STR_IS_ROPE)) /* Rope will become modifiable string at the point of RSTRING_PTR */
+		rb_check_frozen(str);
 	}
 	else {
 	    repl = rb_reg_regsub(repl, str, regs, RB_TYPE_P(pat, T_STRING) ? Qnil : pat);
