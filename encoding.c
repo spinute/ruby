@@ -817,7 +817,7 @@ enc_set_index(VALUE obj, int idx)
 void
 rb_enc_set_index(VALUE obj, int idx)
 {
-    rb_check_frozen(obj);
+    //rb_check_frozen(obj); /* comment out to avoid rope problem */
     must_encindex(idx);
     enc_set_index(obj, idx);
 }

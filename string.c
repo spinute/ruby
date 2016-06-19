@@ -1886,10 +1886,10 @@ rb_str_plus(VALUE str1, VALUE str2)
 	memcpy(ptr3, ptr1, len1);
 	memcpy(ptr3+len1, ptr2, len2);
 	TERM_FILL(&ptr3[len1+len2], rb_enc_mbminlen(enc));
-	ENCODING_CODERANGE_SET(str3, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
     }
 
     FL_SET_RAW(str3, OBJ_TAINTED_RAW(str1) | OBJ_TAINTED_RAW(str2));
+    ENCODING_CODERANGE_SET(str3, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
     RB_GC_GUARD(str1);
     RB_GC_GUARD(str2);
 
