@@ -172,14 +172,14 @@ VALUE rb_cSymbol;
 #define SHARABLE_SUBSTRING_P(beg, len, end) 1
 #endif
 
-#include <stdarg.h>
 
+#include <stdarg.h>
 #define elog(...) \ 
 //printf(__VA_ARGS__)
 
 static inline VALUE str_alloc(VALUE klass);
 static inline VALUE empty_str_alloc(VALUE klass);
-static VALUE str_new_frozen(VALUE klass, VALUE orig);
+
 static VALUE
 rb_get_immutable_value(VALUE str)
 {
@@ -198,7 +198,6 @@ rb_get_immutable_value(VALUE str)
 	else
 	{
 	    elog("%s: share '%s'\n", __func__, RSTRING_PTR(str));
-	    /* shared string should be frozen, right? */
 	    //rb_obj_freeze(str);
 	    FL_SET_RAW(str, STR_SHARED);
 	}
@@ -207,6 +206,7 @@ rb_get_immutable_value(VALUE str)
     }
     else
     {
+	/* Copied from str_duplicate */
 	enum {embed_size = RSTRING_EMBED_LEN_MAX + 1};
 	const VALUE flag_mask =
 	    RSTRING_NOEMBED | RSTRING_EMBED_LEN_MASK |
@@ -217,8 +217,7 @@ rb_get_immutable_value(VALUE str)
 	VALUE dup = str_alloc(rb_obj_class(str));
 
 	elog("%s: copy embeded string '%s'\n", __func__, RSTRING_PTR(str));
-	MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary,
-		char, embed_size);
+	MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary, char, embed_size);
 	FL_SET_RAW(dup, flags & ~FL_FREEZE);
 	return dup;
     }
@@ -240,10 +239,11 @@ rope_collect_cstr(VALUE str, char *ret_buf, long i) {
 }
 
 static VALUE
-rb_str_from_rope(VALUE rope)
+rb_rope_into_string(VALUE rope)
 {
     /* Be careful to call RSTRING_PTR(rope) in this function
      * since this function is called in RSTRING_PTR for Rope */
+
     int termlen = 1; /* It may be inappropriate */
     long len = RSTRING(rope)->as.rope.len;
     char *ptr;
@@ -258,6 +258,7 @@ rb_str_from_rope(VALUE rope)
     TERM_FILL(ptr + len, termlen);
     STR_SET_LEN(rope, len);
     STR_UNSET_ROPE(rope);
+    /* XXX: How can I dereference left and right, here? (It may not be needed) */
 
     RSTRING(rope)->as.heap.aux.capa = len;
     RSTRING(rope)->as.heap.ptr = ptr;
@@ -269,9 +270,9 @@ rb_str_from_rope(VALUE rope)
 }
 
 char *
-get_cstr_from_rope(VALUE rope)
+rb_cstr_from_rope(VALUE rope)
 {
-    VALUE v = rb_str_from_rope(rope);
+    VALUE v = rb_rope_into_string(rope);
     return RSTRING_PTR(v);
 }
 
@@ -1859,16 +1860,13 @@ VALUE
 rb_str_plus(VALUE str1, VALUE str2)
 {
     VALUE str3;
-    char *ptr1, *ptr2, *ptr3;
     rb_encoding *enc;
+    char *ptr1, *ptr2, *ptr3;
     long len1, len2;
 
-    ptr1 = RSTRING_PTR(str1);
-    ptr2 = RSTRING_PTR(str2);
     len1 = RSTRING_LEN(str1);
     len2 = RSTRING_LEN(str2);
     enc = rb_enc_check_str(str1, str2);
-    elog("%s: '%s'(%ld) + '%s'(%ld)\n", __func__, ptr1, len1, ptr2, len2);
 
     if (len1 + len2 > RSTRING_EMBED_LEN_MAX)
     {
@@ -1879,8 +1877,8 @@ rb_str_plus(VALUE str1, VALUE str2)
     {
 	elog("string concat\n");
 	StringValue(str2);
-	RSTRING_GETMEM(str1, ptr1, len1);
-	RSTRING_GETMEM(str2, ptr2, len2);
+	ptr1 = RSTRING_PTR(str1);
+	ptr2 = RSTRING_PTR(str2);
 	str3 = rb_str_new(0, len1+len2);
 	ptr3 = RSTRING_PTR(str3);
 	memcpy(ptr3, ptr1, len1);

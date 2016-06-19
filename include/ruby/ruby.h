@@ -956,14 +956,14 @@ struct RString {
 	    } aux;
 	} heap;
 	struct {
-		long len; /* XXX: needed? */
+		long len;
 		VALUE left,
 			  right;
 	} rope;
 	char ary[RSTRING_EMBED_LEN_MAX + 1];
     } as;
 };
-char *get_cstr_from_rope(VALUE rope);
+char * rb_cstr_from_rope(VALUE rope);
 #define RSTRING_EMBED_LEN(str) \
      (long)((RBASIC(str)->flags >> RSTRING_EMBED_LEN_SHIFT) & \
             (RSTRING_EMBED_LEN_MASK >> RSTRING_EMBED_LEN_SHIFT))
@@ -975,7 +975,7 @@ char *get_cstr_from_rope(VALUE rope);
      RSTRING_EMBED_LEN(str) : \
      RSTRING(str)->as.heap.len)
 #define RSTRING_PTR(str)\
-    (RSTRING_IS_ROPE(str) ? get_cstr_from_rope(str) : \
+    (RSTRING_IS_ROPE(str) ? rb_cstr_from_rope(str) : \
      !(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      RSTRING(str)->as.ary : \
      RSTRING(str)->as.heap.ptr)
