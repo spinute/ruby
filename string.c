@@ -286,8 +286,8 @@ rb_rope_new(VALUE left, VALUE right)
     OBJ_FREEZE(rope);
     FL_SET_RAW(rope, STR_IS_ROPE);
 
-    RB_OBJ_WRITE(rope, &RSTRING(rope)->as.rope.left, im_left);
-    RB_OBJ_WRITE(rope, &RSTRING(rope)->as.rope.right, im_right);
+    RSTRING(rope)->as.rope.left = im_left;
+    RSTRING(rope)->as.rope.right = im_right;
     RSTRING(rope)->as.rope.len = RSTRING_LEN(left) + RSTRING_LEN(right);
     FL_SET_ROPE(rope);
     STR_SET_NOEMBED(rope);
