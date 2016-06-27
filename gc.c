@@ -4476,8 +4476,9 @@ gc_mark_children(rb_objspace_t *objspace, VALUE obj)
 	break;
 
       case T_STRING:
-	if (STR_SHARED_P(obj)) {
-	    gc_mark(objspace, any->as.string.as.heap.aux.shared);
+	{
+	    void rb_str_mark(VALUE);
+	    rb_str_mark(obj);
 	}
 	break;
 

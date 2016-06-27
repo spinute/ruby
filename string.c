@@ -179,6 +179,7 @@ VALUE rb_cSymbol;
 
 static inline VALUE str_alloc(VALUE klass);
 static inline VALUE empty_str_alloc(VALUE klass);
+static VALUE str_new_shared(VALUE klass, VALUE str);
 
 static VALUE
 rb_get_immutable_value(VALUE str)
@@ -192,14 +193,13 @@ rb_get_immutable_value(VALUE str)
 	    elog("%s: already frozen\n", __func__);
 	else if (FL_TEST_RAW(str, STR_SHARED))
 	{
-	    //assert(OBJ_FROZEN(str));
-	    elog("%s: already shared\n", __func__);
+	    elog("%s: already shared '%s'\n", __func__, RSTRING(str));
+	    return RSTRING(str)->as.heap.aux.shared;
 	}
 	else
 	{
-	    elog("%s: share '%s'\n", __func__, RSTRING_PTR(str));
-	    //rb_obj_freeze(str);
-	    FL_SET_RAW(str, STR_SHARED);
+	    elog("%s: make shared object '%s'\n", __func__, RSTRING_PTR(str));
+	    return RSTRING(str_new_shared(RBASIC_CLASS(str), str))->as.heap.aux.shared;
 	}
 
 	return str;
@@ -232,10 +232,38 @@ rope_collect_cstr(VALUE str, char *ret_buf, long i) {
 	return i + RSTRING_LEN(str);
     }
 
-    elog("%s: L ", __func__);
+    elog("L ");
     i = rope_collect_cstr(RSTRING(str)->as.rope.left, ret_buf, i);
-    elog("%s: R ", __func__);
+    elog("R ");
     return rope_collect_cstr(RSTRING(str)->as.rope.right, ret_buf, i);
+}
+
+#define STR_ROPE_P(rope) FL_TEST_RAW(rope, STR_IS_ROPE)
+#define STR_ROPE_RIGHT(r) (RSTRING(r)->as.rope.right)
+#define STR_ROPE_LEFT(r) (RSTRING(r)->as.rope.left)
+
+static void
+rope_dump_each(VALUE node)
+{
+    if (STR_ROPE_P(node)) {
+	fprintf(stderr, "[");
+	rope_dump_each(STR_ROPE_LEFT(node));
+	fprintf(stderr, ", ");
+	rope_dump_each(STR_ROPE_RIGHT(node));
+	fprintf(stderr, "]");
+    }
+    else {
+	fprintf(stderr, "<%s>", RSTRING_PTR(node));
+    }
+}
+
+static void
+rope_dump(VALUE rope)
+{
+    return;
+    fprintf(stderr, "%s: %p\n", __func__, (void *)rope);
+    rope_dump_each(rope);
+    fprintf(stderr, "\n");
 }
 
 static VALUE
@@ -249,11 +277,12 @@ rb_rope_into_string(VALUE rope)
     char *ptr;
 
     Check_Type(rope, T_STRING);
-    if (!FL_TEST_RAW(rope, STR_IS_ROPE))
-	rb_bug("%s: Passed VALUE is not rope", __func__);
+    assert(STR_ROPE_P(rope));
     assert(len > RSTRING_EMBED_LEN_MAX);
 
     ptr = ALLOC_N(char, len + termlen);
+    rope_dump(rope);
+
     rope_collect_cstr(rope, ptr, 0);
     TERM_FILL(ptr + len, termlen);
     STR_SET_LEN(rope, len);
@@ -279,24 +308,39 @@ rb_cstr_from_rope(VALUE rope)
 static VALUE
 rb_rope_new(VALUE left, VALUE right)
 {
-    VALUE im_left = rb_get_immutable_value(left),
-	  im_right = rb_get_immutable_value(right);
     VALUE rope = empty_str_alloc(rb_cString); // Is it an appropriate alloc function?
+    elog("%s: %p\n", __func__, (void *)rope);
 
-    OBJ_FREEZE(rope);
-    FL_SET_RAW(rope, STR_IS_ROPE);
+    {
+	VALUE im_left = rb_get_immutable_value(left),
+	      im_right = rb_get_immutable_value(right);
 
-    RSTRING(rope)->as.rope.left = im_left;
-    RSTRING(rope)->as.rope.right = im_right;
-    RSTRING(rope)->as.rope.len = RSTRING_LEN(left) + RSTRING_LEN(right);
-    FL_SET_ROPE(rope);
-    STR_SET_NOEMBED(rope);
+	OBJ_FREEZE(rope); /* needed? */
+	FL_SET_RAW(rope, STR_IS_ROPE);
 
-    elog("%s: llen = %ld, rlen = %ld, len=%ld\n", __func__, RSTRING_LEN(left), RSTRING_LEN(right), RSTRING_LEN(rope));
+	FL_SET_ROPE(rope);
+	RSTRING(rope)->as.rope.left = im_left;
+	RSTRING(rope)->as.rope.right = im_right;
+	RSTRING(rope)->as.rope.len = RSTRING_LEN(left) + RSTRING_LEN(right);
+	STR_SET_NOEMBED(rope);
+    }
+    elog("%s %p: llen = %ld, rlen = %ld, len=%ld\n", __func__, (void *)rope,
+	    RSTRING_LEN(left), RSTRING_LEN(right), RSTRING_LEN(rope));
 
     return rope;
 }
 
+void
+rb_str_mark(VALUE str)
+{
+    if (STR_SHARED_P(str)) {
+	rb_gc_mark(RSTRING(str)->as.heap.aux.shared);
+    }
+    else if (STR_ROPE_P(str)) {
+	rb_gc_mark(STR_ROPE_LEFT(str));
+	rb_gc_mark(STR_ROPE_RIGHT(str));
+    }
+}
 
 static VALUE str_replace_shared_without_enc(VALUE str2, VALUE str);
 static VALUE str_new_shared(VALUE klass, VALUE str);
@@ -1349,7 +1393,7 @@ rb_str_free(VALUE str)
 	st_delete(rb_vm_fstring_table(), &fstr, NULL);
     }
 
-    if (!STR_EMBED_P(str) && !FL_TEST(str, STR_SHARED|STR_NOFREE)) {
+    if (!STR_EMBED_P(str) && !FL_TEST(str, STR_SHARED|STR_NOFREE|STR_IS_ROPE)) {
 	ruby_sized_xfree(STR_HEAP_PTR(str), STR_HEAP_SIZE(str));
     }
 }
