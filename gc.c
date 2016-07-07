@@ -2162,7 +2162,6 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
 	RANY(obj)->as.klass.ptr = NULL;
 	break;
       case T_STRING:
-	fprintf(stderr, "%s: free %p\n", __func__, (void *) obj);
 	rb_str_free(obj);
 	break;
       case T_ARRAY:
