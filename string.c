@@ -340,8 +340,8 @@ rb_get_immutable_value(VALUE str)
 	else
 	{
 	    VALUE str_new = str_new_shared(RBASIC_CLASS(str), str);
-	    elog("%s: make shared object '%s'\n", __func__, GET_RSTRING_NOEMBED_PTR(str));
-	    return GET_RSTRING_NOEMBED_SHARED(str_new);
+	    //elog("%s: make shared object '%s'\n", __func__, GET_RSTRING_NOEMBED_PTR(str));
+	    return FL_TEST_RAW(str_new, STR_NOEMBED) ? GET_RSTRING_NOEMBED_SHARED(str_new) : str_new;
 	}
 
 	return str;
@@ -1552,7 +1552,8 @@ rb_str_memsize(VALUE str)
 	return STR_HEAP_SIZE(str);
     }
     if (STR_ROPE_P(str))
-	return RSTRING_LEN(str) + TERM_LEN(str);
+	return 0;
+	//return RSTRING_LEN(str) + TERM_LEN(str);
     else {
 	return 0;
     }

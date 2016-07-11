@@ -711,13 +711,13 @@ zstream_expand_buffer_without_gvl(struct zstream *z)
 
 	len = z->buf_filled + inc;
 
-	new_str = ruby_xrealloc(RSTRING(z->buf)->as.heap.ptr, len + 1);
+	new_str = ruby_xrealloc(RSTRING(z->buf)->as.noembed.ptr, len + 1);
 
 	/* from rb_str_resize */
-	RSTRING(z->buf)->as.heap.ptr = new_str;
-	RSTRING(z->buf)->as.heap.ptr[len] = '\0'; /* sentinel */
-	RSTRING(z->buf)->as.heap.len =
-	    RSTRING(z->buf)->as.heap.aux.capa = len;
+	RSTRING(z->buf)->as.noembed.ptr = new_str;
+	RSTRING(z->buf)->as.noembed.ptr[len] = '\0'; /* sentinel */
+	RSTRING(z->buf)->as.noembed.len =
+	    RSTRING(z->buf)->as.noembed.aux.capa = len;
 
 	z->stream.avail_out = (inc < ZSTREAM_AVAIL_OUT_STEP_MAX) ?
 	    (int)inc : ZSTREAM_AVAIL_OUT_STEP_MAX;

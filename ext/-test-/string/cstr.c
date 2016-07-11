@@ -65,8 +65,8 @@ bug_str_unterminated_substring(VALUE str, VALUE vbeg, VALUE vlen)
 	memmove(RSTRING(str)->as.ary, RSTRING(str)->as.ary + beg, len);
     }
     else {
-	RSTRING(str)->as.heap.ptr += beg;
-	RSTRING(str)->as.heap.len = len;
+	RSTRING(str)->as.noembed.ptr += beg;
+	RSTRING(str)->as.noembed.len = len;
     }
     return str;
 }
@@ -111,9 +111,9 @@ bug_str_s_cstr_noembed(VALUE self, VALUE str)
     FL_SET((str2), STR_NOEMBED);
     memcpy(buf, RSTRING_PTR(str), capacity);
     RBASIC(str2)->flags &= ~RSTRING_EMBED_LEN_MASK;
-    RSTRING(str2)->as.heap.aux.capa = capacity;
-    RSTRING(str2)->as.heap.ptr = buf;
-    RSTRING(str2)->as.heap.len = RSTRING_LEN(str);
+    RSTRING(str2)->as.noembed.aux.capa = capacity;
+    RSTRING(str2)->as.noembed.ptr = buf;
+    RSTRING(str2)->as.noembed.len = RSTRING_LEN(str);
     TERM_FILL(RSTRING_END(str2), TERM_LEN(str));
     return str2;
 }
