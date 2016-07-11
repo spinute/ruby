@@ -1311,6 +1311,7 @@ ruby__sfvwrite(register rb_printf_buffer *fp, register struct __suio *uio)
     char *buf = (char*)fp->_p;
     size_t len, n;
     size_t blen = buf - RSTRING_PTR(result), bsiz = fp->_w;
+    size_t tmp;
 
     if (RBASIC(result)->klass) {
 	rb_raise(rb_eRuntimeError, "rb_vsprintf reentered");
@@ -1326,7 +1327,8 @@ ruby__sfvwrite(register rb_printf_buffer *fp, register struct __suio *uio)
 	len -= n;
     }
     fp->_p = (unsigned char *)buf;
-    rb_str_set_len(result, buf - RSTRING_PTR(result));
+    tmp = buf - RSTRING_PTR(result);
+    rb_str_set_len(result, tmp);
     return 0;
 }
 
@@ -1463,9 +1465,9 @@ rb_str_vcatf(VALUE str, const char *fmt, va_list ap)
     rb_str_modify(str);
     f._flags = __SWR | __SSTR;
     f._bf._size = 0;
+    f._p = (unsigned char *)RSTRING_END(str);
     f._w = rb_str_capacity(str);
     f._bf._base = (unsigned char *)str;
-    f._p = (unsigned char *)RSTRING_END(str);
     klass = RBASIC(str)->klass;
     RBASIC_CLEAR_CLASS(str);
     f.vwrite = ruby__sfvwrite;
@@ -1473,7 +1475,10 @@ rb_str_vcatf(VALUE str, const char *fmt, va_list ap)
     buffer.value = 0;
     BSD_vfprintf(&f, fmt, ap);
     RBASIC_SET_CLASS_RAW(str, klass);
-    rb_str_resize(str, (char *)f._p - RSTRING_PTR(str));
+    {
+	long len = (char *)f._p - RSTRING_PTR(str);
+        rb_str_resize(str, len);
+    }
 #undef f
 
     return str;

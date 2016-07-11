@@ -954,7 +954,7 @@ struct RString {
 		long capa;
 		VALUE shared;
 	    } aux;
-	} heap;
+	} noembed;
 	struct {
 		long len;
 		VALUE left,
@@ -973,21 +973,21 @@ char * rb_cstr_from_rope(VALUE rope);
     (RSTRING_IS_ROPE(str) ? RSTRING(str)->as.rope.len : \
      !(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      RSTRING_EMBED_LEN(str) : \
-     RSTRING(str)->as.heap.len)
+     RSTRING(str)->as.noembed.len)
 #define RSTRING_PTR(str)\
     (RSTRING_IS_ROPE(str) ? rb_cstr_from_rope(str) : \
      !(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      RSTRING(str)->as.ary : \
-     RSTRING(str)->as.heap.ptr)
+     RSTRING(str)->as.noembed.ptr)
 #define RSTRING_END(str) \
     (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      (RSTRING(str)->as.ary + RSTRING_EMBED_LEN(str)) : \
-     (RSTRING(str)->as.heap.ptr + RSTRING(str)->as.heap.len))
+     (RSTRING(str)->as.noembed.ptr + RSTRING(str)->as.noembed.len))
 #define RSTRING_LENINT(str) rb_long2int(RSTRING_LEN(str))
 #define RSTRING_GETMEM(str, ptrvar, lenvar) \
     (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
      ((ptrvar) = RSTRING(str)->as.ary, (lenvar) = RSTRING_EMBED_LEN(str)) : \
-     ((ptrvar) = RSTRING(str)->as.heap.ptr, (lenvar) = RSTRING(str)->as.heap.len))
+     ((ptrvar) = RSTRING(str)->as.noembed.ptr, (lenvar) = RSTRING(str)->as.noembed.len))
 
 #define RARRAY_EMBED_FLAG RARRAY_EMBED_FLAG
 #define RARRAY_EMBED_LEN_MASK RARRAY_EMBED_LEN_MASK
