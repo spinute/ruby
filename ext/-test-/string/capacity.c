@@ -7,7 +7,7 @@ bug_str_capacity(VALUE klass, VALUE str)
     return
 	STR_EMBED_P(str) ? INT2FIX(RSTRING_EMBED_LEN_MAX) : \
 	STR_SHARED_P(str) ? INT2FIX(0) : \
-	STR_IS_ROPE(str) ? RSTRING_LEN(str) : \
+	RSTRING_IS_ROPE(str) ? RSTRING_LEN(str) : \
 	LONG2FIX(RSTRING(str)->as.noembed.aux.capa);
 }
 

@@ -1421,7 +1421,7 @@ rb_str_new_frozen(VALUE orig)
 {
     VALUE str;
 
-    if (OBJ_FROZEN(orig)) return orig;
+    if (OBJ_FROZEN(orig) || STR_ROPE_P(orig)) return orig;
 
     str = str_new_frozen(rb_obj_class(orig), orig);
     OBJ_INFECT(str, orig);
@@ -1433,6 +1433,10 @@ str_new_frozen(VALUE klass, VALUE orig)
 {
     VALUE str;
 
+    if (STR_ROPE_P(orig)) {
+	orig = rb_rope_into_string(orig); /* XXX: how to avoid */
+    }
+
     if (STR_EMBED_P(orig)) {
 	str = str_new(klass, RSTRING_PTR(orig), RSTRING_LEN(orig));
     }
@@ -1442,7 +1446,7 @@ str_new_frozen(VALUE klass, VALUE orig)
 	    long ofs = GET_RSTRING_NOEMBED_PTR(orig) - GET_RSTRING_NOEMBED_PTR(shared);
 	    long rest = GET_RSTRING_NOEMBED_LEN(shared) - ofs - GET_RSTRING_NOEMBED_LEN(orig);
 	    assert(!STR_EMBED_P(shared));
-	    assert(OBJ_FROZEN(shared));
+	    assert(OBJ_FROZEN(shared) || STR_ROPE_P(shared));
 
 	    if ((ofs > 0) || (rest > 0) ||
 		(klass != RBASIC(shared)->klass) ||
@@ -1686,10 +1690,12 @@ str_duplicate(VALUE klass, VALUE str)
 	}
 
 	if (flags & STR_NOEMBED) {
-	    if (STR_ROPE_P(dup)) {
-		elog("%s: rope", __func__);
-		assert(0);
+	    if (STR_ROPE_P(str)) {
+		rb_rope_into_string(str);
+		flags = FL_TEST_RAW(str, flag_mask);
 	    }
+	    MEMCPY(RSTRING_EMBED_ARY(dup), RSTRING_EMBED_ARY(str),
+		    char, embed_size); /* Disguise as embeded */
 	    RB_OBJ_WRITE(dup, &RSTRING_NOEMBED_SHARED(dup), str);
 	    flags |= STR_SHARED;
 	}
@@ -4541,7 +4547,7 @@ rb_str_drop_bytes(VALUE str, long len)
 	if (fl == STR_NOEMBED) xfree(oldptr);
     }
     else {
-	if (!STR_SHARED_P(str)) rb_str_new_frozen(str);
+	if (!STR_SHARED_P(str)) str = rb_str_new_frozen(str);
 	ptr = RSTRING_NOEMBED_PTR(str) += len;
 	SET_RSTRING_NOEMBED_LEN(str, nlen);
     }
