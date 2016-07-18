@@ -1446,7 +1446,7 @@ str_new_frozen(VALUE klass, VALUE orig)
 	    long ofs = GET_RSTRING_NOEMBED_PTR(orig) - GET_RSTRING_NOEMBED_PTR(shared);
 	    long rest = GET_RSTRING_NOEMBED_LEN(shared) - ofs - GET_RSTRING_NOEMBED_LEN(orig);
 	    assert(!STR_EMBED_P(shared));
-	    assert(OBJ_FROZEN(shared) || STR_ROPE_P(shared));
+	    assert(OBJ_FROZEN(shared));
 
 	    if ((ofs > 0) || (rest > 0) ||
 		(klass != RBASIC(shared)->klass) ||
@@ -1678,8 +1678,13 @@ str_duplicate(VALUE klass, VALUE str)
 	RSTRING_NOEMBED | RSTRING_EMBED_LEN_MASK |
 	ENC_CODERANGE_MASK | ENCODING_MASK |
 	FL_TAINT | FL_FREEZE | STR_IS_ROPE ;
-    VALUE flags = FL_TEST_RAW(str, flag_mask);
-    VALUE dup = str_alloc(klass);
+    VALUE flags, dup;
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+	flags = FL_TEST_RAW(str, flag_mask);
+    }
+    flags = FL_TEST_RAW(str, flag_mask);
+    dup = str_alloc(klass);
     MEMCPY(RSTRING_EMBED_ARY(dup), RSTRING_EMBED_ARY(str),
 	    char, embed_size); /* Disguise as embeded */
     if (flags & STR_NOEMBED) {
@@ -1690,10 +1695,6 @@ str_duplicate(VALUE klass, VALUE str)
 	}
 
 	if (flags & STR_NOEMBED) {
-	    if (STR_ROPE_P(str)) {
-		rb_rope_into_string(str);
-		flags = FL_TEST_RAW(str, flag_mask);
-	    }
 	    MEMCPY(RSTRING_EMBED_ARY(dup), RSTRING_EMBED_ARY(str),
 		    char, embed_size); /* Disguise as embeded */
 	    RB_OBJ_WRITE(dup, &RSTRING_NOEMBED_SHARED(dup), str);
@@ -2238,12 +2239,12 @@ str_make_independent_expand(VALUE str, long len, long expand, const int termlen)
     const char *oldptr;
     long capa = len + expand;
 
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
+
     if (len > capa) len = capa;
 
-    if (STR_ROPE_P(str)) {
-	elog("%s\n", __func__);
-	assert(0);
-    }
 
     if (capa + termlen - 1 <= RSTRING_EMBED_LEN_MAX && !STR_EMBED_P(str)) {
 	ptr = GET_RSTRING_NOEMBED_PTR(str);
@@ -4547,7 +4548,7 @@ rb_str_drop_bytes(VALUE str, long len)
 	if (fl == STR_NOEMBED) xfree(oldptr);
     }
     else {
-	if (!STR_SHARED_P(str)) str = rb_str_new_frozen(str);
+	if (!STR_SHARED_P(str)) rb_str_new_frozen(str);
 	ptr = RSTRING_NOEMBED_PTR(str) += len;
 	SET_RSTRING_NOEMBED_LEN(str, nlen);
     }
