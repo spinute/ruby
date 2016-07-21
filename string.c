@@ -1779,6 +1779,7 @@ rb_str_init(int argc, VALUE *argv, VALUE str)
 	    }
 	    str_modifiable(str);
 	    if (STR_EMBED_P(str)) { /* make noembed always */
+		FL_SET(str, STR_NOEMBED);
 		SET_RSTRING_NOEMBED_PTR(str, ALLOC_N(char, capa+termlen));
 	    }
 	    else if (STR_HEAP_SIZE(str) != capa+termlen) {
@@ -2081,6 +2082,7 @@ rb_str_plus(VALUE str1, VALUE str2)
     char *ptr1, *ptr2, *ptr3;
     long len1, len2;
 
+    StringValue(str2);
     len1 = RSTRING_LEN(str1);
     len2 = RSTRING_LEN(str2);
     enc = rb_enc_check_str(str1, str2);
@@ -2094,7 +2096,6 @@ rb_str_plus(VALUE str1, VALUE str2)
     {
 	int termlen;
 	elog("string concat\n");
-	StringValue(str2);
 	ptr1 = RSTRING_PTR(str1);
 	ptr2 = RSTRING_PTR(str2);
 
