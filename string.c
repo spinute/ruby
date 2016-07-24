@@ -77,14 +77,17 @@ VALUE rb_cSymbol;
  * 19:    STR_FAKESTR
  */
 
+#if 0
 #include <stdarg.h>
+#define elog(...) fprintf(stderr, __VA_ARGS__)
+#else
 #define elog(...) (void)0
-//fprintf(stderr, __VA_ARGS__)
+#endif
 
 #include <stdio.h>
 #define STR_IS_ROPE FL_USER0
 
-#define FL_SET_ROPE(str) FL_SET_RAW((str), STR_IS_ROPE)
+#define STR_SET_ROPE(str) FL_SET_RAW((str), STR_IS_ROPE)
 #define STR_UNSET_ROPE(str) FL_UNSET((str), STR_IS_ROPE)
 
 #define STR_ROPE_P(rope) FL_TEST_RAW(rope, STR_IS_ROPE)
@@ -136,11 +139,16 @@ SET_RSTRING_ROPE_LEN(VALUE rope, long len)
 }
 
 #define RSTRING_EMBED_ARY(str) RSTRING(str)->as.ary
-static inline char *
-GET_RSTRING_EMBED_ARY(VALUE str)
+static inline void
+validate_embed(VALUE str)
 {
     assert(!STR_ROPE_P(str));
     assert(!FL_TEST_RAW(str, RSTRING_NOEMBED));
+}
+static inline char *
+GET_RSTRING_EMBED_ARY(VALUE str)
+{
+    validate_embed(str);
     return RSTRING_EMBED_ARY(str);
 }
 
@@ -225,7 +233,6 @@ static VALUE rb_rope_into_string(VALUE rope);
 	STR_SET_EMBED_LEN((str), (n));\
     }\
     else if (STR_ROPE_P(str)) { \
-	assert(!STR_ROPE_P(str)); \
 	str = rb_rope_into_string(str); \
 	SET_RSTRING_NOEMBED_LEN(str, n); \
     } \
@@ -240,12 +247,10 @@ static VALUE rb_rope_into_string(VALUE rope);
 	n--;\
 	STR_SET_EMBED_LEN((str), n);\
     }\
-    else if (STR_ROPE_P(str)) { \
-	elog("inside STR_DEC_LEN"); \
-	assert(0); /* rope is immtable */ \
-	STR_ROPE_LEN(str)--; \
-    } \
     else {\
+	if (STR_ROPE_P(str)) { \
+	    str = rb_rope_into_string(str); \
+	} \
 	RSTRING_EMBED_LEN(str)--;\
     }\
 } while (0)
@@ -275,12 +280,11 @@ static VALUE rb_rope_into_string(VALUE rope);
 	    SET_RSTRING_NOEMBED_CAPA(str, capacity);\
 	}\
     }\
-    else if (STR_ROPE_P(str)) { \
-	elog("inside RESIZE_CAPA_TERM"); \
-	assert(0); /* rope is immutable */ \
-    } \
     else {\
 	assert(!FL_TEST((str), STR_SHARED)); \
+	if (STR_ROPE_P(str)) { \
+	    str = rb_rope_into_string(str); \
+	} \
 	REALLOC_N(RSTRING_NOEMBED_PTR(str), char, (capacity)+termlen);\
 	SET_RSTRING_NOEMBED_CAPA(str, capacity);\
     }\
@@ -288,10 +292,7 @@ static VALUE rb_rope_into_string(VALUE rope);
 
 #define STR_SET_SHARED(str, shared_str) do { \
     if (!FL_TEST(str, STR_FAKESTR)) { \
-	if (STR_ROPE_P(str)) { \
-	    elog("STR_SET_SHARED: str is Rope"); \
-	    assert(0); \
-	} \
+	assert(!STR_ROPE_P(str)); \
 	RB_OBJ_WRITE((str), &RSTRING_NOEMBED_SHARED(str), (shared_str)); \
 	FL_SET((str), STR_SHARED); \
     } \
@@ -328,23 +329,15 @@ rb_get_immutable_value(VALUE str)
     Check_Type(str, T_STRING);
     if (FL_TEST_RAW(str, STR_NOEMBED))
     {
-	if (FL_TEST_RAW(str, STR_IS_ROPE))
-	    elog("%s: already rope\n", __func__);
-	else if (FL_TEST_RAW(str, FL_FREEZE))
-	    elog("%s: already frozen\n", __func__);
+	if (FL_TEST_RAW(str, STR_IS_ROPE | FL_FREEZE))
+	    return str;
 	else if (FL_TEST_RAW(str, STR_SHARED))
-	{
-	    elog("%s: already shared '%s'\n", __func__, GET_RSTRING_NOEMBED_PTR(str));
 	    return GET_RSTRING_NOEMBED_SHARED(str);
-	}
 	else
 	{
 	    VALUE str_new = str_new_shared(RBASIC_CLASS(str), str);
-	    //elog("%s: make shared object '%s'\n", __func__, GET_RSTRING_NOEMBED_PTR(str));
 	    return FL_TEST_RAW(str_new, STR_NOEMBED) ? GET_RSTRING_NOEMBED_SHARED(str_new) : str_new;
 	}
-
-	return str;
     }
     else
     {
@@ -353,12 +346,10 @@ rb_get_immutable_value(VALUE str)
 	const VALUE flag_mask =
 	    RSTRING_NOEMBED | RSTRING_EMBED_LEN_MASK |
 	    ENC_CODERANGE_MASK | ENCODING_MASK |
-	    FL_TAINT | FL_FREEZE
-	    ;
+	    FL_TAINT | FL_FREEZE;
 	VALUE flags = FL_TEST_RAW(str, flag_mask);
 	VALUE dup = str_alloc(rb_obj_class(str));
 
-	elog("%s: copy embeded string '%s'\n", __func__, GET_RSTRING_EMBED_ARY(str));
 	MEMCPY(GET_RSTRING_EMBED_ARY(dup), GET_RSTRING_EMBED_ARY(str), char, embed_size);
 	FL_SET_RAW(dup, flags & ~FL_FREEZE);
 	return dup;
@@ -367,17 +358,12 @@ rb_get_immutable_value(VALUE str)
 
 static long
 rope_collect_cstr(VALUE str, char *ret_buf, long i) {
-    //fprintf(stderr, "%s: %p\n", __func__, (void *)str);
     if (!FL_TEST_RAW(str, STR_IS_ROPE)) {
-	elog("%s: len=%ld, i=%ld, str='%s'\n", __func__, RSTRING_LEN(str), i, RSTRING_PTR(str));
-
 	memcpy(ret_buf + i, RSTRING_PTR(str), RSTRING_LEN(str)); /* except NUL */
 	return i + RSTRING_LEN(str);
     }
 
-    elog("L ");
     i = rope_collect_cstr(GET_RSTRING_ROPE_LEFT(str), ret_buf, i);
-    elog("R ");
     return rope_collect_cstr(GET_RSTRING_ROPE_RIGHT(str), ret_buf, i);
 }
 
@@ -399,7 +385,6 @@ rope_dump_each(VALUE node)
 static void
 rope_dump(VALUE rope)
 {
-    return;
     fprintf(stderr, "%s: %p\n", __func__, (void *)rope);
     rope_dump_each(rope);
     fprintf(stderr, "\n");
@@ -408,10 +393,7 @@ rope_dump(VALUE rope)
 static VALUE
 rb_rope_into_string(VALUE rope)
 {
-    /* Be careful to call RSTRING_PTR(rope) in this function
-     * since this function is called in RSTRING_PTR for Rope */
-
-    int termlen = 1; /* It may be inappropriate */
+    int termlen = TERM_LEN(rope);
     long len = GET_RSTRING_ROPE_LEN(rope);
     char *ptr;
 
@@ -420,7 +402,6 @@ rb_rope_into_string(VALUE rope)
     assert(len > RSTRING_EMBED_LEN_MAX);
 
     ptr = ALLOC_N(char, len + termlen);
-    rope_dump(rope);
 
     rope_collect_cstr(rope, ptr, 0);
     TERM_FILL(ptr + len, termlen);
@@ -428,8 +409,6 @@ rb_rope_into_string(VALUE rope)
     STR_SET_LEN(rope, len);
     SET_RSTRING_NOEMBED_CAPA(rope, len);
     SET_RSTRING_NOEMBED_PTR(rope, ptr);
-
-    elog("%s: '%s'\n", __func__, RSTRING_PTR(rope)); /* Now rope is not Rope */
 
     return rope;
 }
@@ -451,7 +430,7 @@ rb_rope_new(VALUE left, VALUE right)
 	VALUE im_left = rb_get_immutable_value(left),
 	      im_right = rb_get_immutable_value(right);
 
-	FL_SET_ROPE(rope);
+	STR_SET_ROPE(rope);
 	STR_SET_NOEMBED(rope);
 	SET_RSTRING_ROPE_LEFT(rope, im_left);
 	SET_RSTRING_ROPE_RIGHT(rope, im_right);
@@ -964,7 +943,6 @@ rb_str_capacity(VALUE str)
     }
     else if (STR_ROPE_P(str)) {
 	elog("%s: \n", __func__);
-	assert(0);
 	return RSTRING_LEN(str);
     }
     else if (FL_TEST(str, STR_SHARED|STR_NOFREE)) {
@@ -1368,7 +1346,11 @@ str_replace_shared_without_enc(VALUE str2, VALUE str)
     char *ptr;
     long len;
 
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
     RSTRING_GETMEM(str, ptr, len);
+
     if (len+termlen <= RSTRING_EMBED_LEN_MAX+1) {
 	char *ptr2;
 	STR_SET_EMBED(str2);
@@ -1377,14 +1359,10 @@ str_replace_shared_without_enc(VALUE str2, VALUE str)
 	STR_SET_EMBED_LEN(str2, len);
 	TERM_FILL(ptr2+len, termlen);
     }
-    else if (STR_ROPE_P(str)) {
-	elog("%s: \n", __func__);
-	assert(0);
-    }
     else {
 	str = rb_str_new_frozen(str);
 	FL_SET(str2, STR_NOEMBED);
-	assert(!STR_ROPE_P(str2));
+	STR_UNSET_ROPE(str2);
 	RSTRING_GETMEM(str, ptr, len);
 	SET_RSTRING_NOEMBED_LEN(str2, len);
 	SET_RSTRING_NOEMBED_PTR(str2, ptr);
@@ -1597,9 +1575,21 @@ str_shared_replace(VALUE str, VALUE str2)
         rb_enc_associate(str, enc);
         ENC_CODERANGE_SET(str, cr);
     }
-    else if (STR_ROPE_P(str) || STR_ROPE_P(str2)) {
-	elog("%s\n", __func__);
-	assert(0);
+    else if (STR_ROPE_P(str2)) {
+	STR_SET_NOEMBED(str);
+	STR_SET_ROPE(str);
+	FL_UNSET(str, STR_SHARED);
+	assert(!FL_TEST(str2, STR_SHARED));
+	SET_RSTRING_ROPE_LEN(str, GET_RSTRING_ROPE_LEN(str2));
+	SET_RSTRING_ROPE_LEFT(str, GET_RSTRING_ROPE_LEFT(str2));
+	SET_RSTRING_ROPE_RIGHT(str, GET_RSTRING_ROPE_RIGHT(str2));
+
+	/* abandon str2 */
+	STR_SET_EMBED(str2);
+	RSTRING_PTR(str2)[0] = 0;
+	STR_SET_EMBED_LEN(str2, 0);
+	rb_enc_associate(str, enc);
+	ENC_CODERANGE_SET(str, cr);
     }
     else {
 	STR_SET_NOEMBED(str);
@@ -1658,9 +1648,12 @@ str_replace(VALUE str, VALUE str2)
 	STR_SET_SHARED(str, shared);
 	rb_enc_cr_str_exact_copy(str, str2);
     }
-    else if (STR_ROPE_P(str) || STR_ROPE_P(str2)) {
-	elog("%s\n", __func__);
-	assert(0);
+    else if (STR_ROPE_P(str2)) {
+	STR_SET_NOEMBED(str);
+	STR_SET_ROPE(str);
+	SET_RSTRING_ROPE_LEN(str, len);
+	SET_RSTRING_ROPE_LEFT(str, GET_RSTRING_ROPE_LEFT(str2));
+	SET_RSTRING_ROPE_RIGHT(str, GET_RSTRING_ROPE_RIGHT(str2));
     }
     else {
 	str_replace_shared(str, str2);
@@ -2285,6 +2278,9 @@ rb_str_modify_expand(VALUE str, long expand)
     if (expand < 0) {
 	rb_raise(rb_eArgError, "negative expanding string size");
     }
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
     termlen = TERM_LEN(str);
     if (!str_independent(str)) {
 	long len = RSTRING_LEN(str);
@@ -2295,10 +2291,6 @@ rb_str_modify_expand(VALUE str, long expand)
 	long capa = len + expand;
 	if (expand >= LONG_MAX - len - termlen) {
 	    rb_raise(rb_eArgError, "string size too big");
-	}
-	if (STR_ROPE_P(str)) {
-	    elog("%s\n", __func__);
-	    assert(0);
 	}
 	if (!STR_EMBED_P(str)) {
 	    REALLOC_N(RSTRING_NOEMBED_PTR(str), char, capa + termlen);
@@ -2845,6 +2837,9 @@ rb_str_resize(VALUE str, long len)
 	rb_raise(rb_eArgError, "negative string size (or size too big)");
     }
 
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
     independent = str_independent(str);
     ENC_CODERANGE_CLEAR(str);
     slen = RSTRING_LEN(str);
@@ -2871,10 +2866,6 @@ rb_str_resize(VALUE str, long len)
 	    if (independent) ruby_xfree(ptr);
 	    return str;
 	}
-	else if (STR_ROPE_P(str)) {
-	    elog("%s\n", __func__);
-	    assert(0);
-	}
 	else if (!independent) {
 	    if (len == slen) return str;
 	    str_make_independent_expand(str, slen, len - slen, termlen);
@@ -2897,8 +2888,13 @@ str_buf_cat(VALUE str, const char *ptr, long len)
 {
     long capa, total, olen, off = -1;
     char *sptr;
-    const int termlen = TERM_LEN(str);
+    int termlen;
 
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
+
+    termlen = TERM_LEN(str);
     RSTRING_GETMEM(str, sptr, olen);
     if (ptr >= sptr && ptr <= sptr + olen) {
         off = ptr - sptr;
@@ -2909,10 +2905,6 @@ str_buf_cat(VALUE str, const char *ptr, long len)
 	capa = RSTRING_EMBED_LEN_MAX;
 	sptr = GET_RSTRING_EMBED_ARY(str);
 	olen = RSTRING_EMBED_LEN(str);
-    }
-    else if (STR_ROPE_P(str)) {
-	elog("%s\n", __func__);
-	assert(0);
     }
     else {
 	capa = GET_RSTRING_NOEMBED_CAPA(str);
@@ -4530,12 +4522,11 @@ rb_str_drop_bytes(VALUE str, long len)
     char *ptr = RSTRING_PTR(str);
     long olen = RSTRING_LEN(str), nlen;
 
-    str_modifiable(str);
-
     if (STR_ROPE_P(str)) {
-	elog("%s\n", __func__);
-	assert(0);
+	str = rb_rope_into_string(str);
     }
+
+    str_modifiable(str);
 
     if (len > olen) len = olen;
     nlen = olen - len;
@@ -6610,8 +6601,13 @@ tr_trans(VALUE str, VALUE src, VALUE repl, int sflag)
     int modify = 0, i, l;
     char *s, *send;
     VALUE hash = 0;
-    int singlebyte = single_byte_optimizable(str);
+    int singlebyte;
     int cr;
+
+    if (STR_ROPE_P(str)) {
+	str = rb_rope_into_string(str);
+    }
+    singlebyte = single_byte_optimizable(str);
 
 #define CHECK_IF_ASCII(c) \
     (void)((cr == ENC_CODERANGE_7BIT && !rb_isascii(c)) ? \
@@ -6750,10 +6746,6 @@ tr_trans(VALUE str, VALUE src, VALUE repl, int sflag)
 	if (!STR_EMBED_P(str) && !STR_ROPE_P(str)) {
 	    ruby_sized_xfree(STR_HEAP_PTR(str), STR_HEAP_SIZE(str));
 	}
-	if (STR_ROPE_P(str)) {
-	    elog("%s\n", __func__);
-	    assert(0);
-	}
 	TERM_FILL(t, rb_enc_mbminlen(enc));
 	STR_SET_NOEMBED(str);
 	assert(!STR_ROPE_P(str));
@@ -6830,10 +6822,6 @@ tr_trans(VALUE str, VALUE src, VALUE repl, int sflag)
 	}
 	if (!STR_EMBED_P(str) && !STR_ROPE_P(str)) {
 	    ruby_sized_xfree(STR_HEAP_PTR(str), STR_HEAP_SIZE(str));
-	}
-	if (STR_ROPE_P(str)) {
-	    elog("%s\n", __func__);
-	    assert(0);
 	}
 	TERM_FILL(t, rb_enc_mbminlen(enc));
 	STR_SET_NOEMBED(str);
