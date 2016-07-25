@@ -332,7 +332,7 @@ rb_get_immutable_value(VALUE str)
 	if (FL_TEST_RAW(str, STR_IS_ROPE | FL_FREEZE))
 	    return str;
 	else if (FL_TEST_RAW(str, STR_SHARED))
-	    return GET_RSTRING_NOEMBED_SHARED(str);
+	    return rb_str_new_frozen(str);
 	else
 	{
 	    VALUE str_new = str_new_shared(RBASIC_CLASS(str), str);
@@ -2084,6 +2084,8 @@ rb_str_plus(VALUE str1, VALUE str2)
     {
 	elog("rope concat\n");
 	str3 = rb_rope_new(str1, str2);
+	//ENCODING_CODERANGE_SET(str1, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
+	//ENCODING_CODERANGE_SET(str2, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
     }
     else
     {
