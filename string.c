@@ -2083,9 +2083,14 @@ rb_str_plus(VALUE str1, VALUE str2)
     if (len1 + len2 > RSTRING_EMBED_LEN_MAX)
     {
 	elog("rope concat\n");
-	str3 = rb_rope_new(str1, str2);
-	//ENCODING_CODERANGE_SET(str1, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
-	//ENCODING_CODERANGE_SET(str2, rb_enc_to_index(enc), ENC_CODERANGE_AND(ENC_CODERANGE(str1), ENC_CODERANGE(str2)));
+	if (STR_ROPE_P(str1) &&
+	    STR_ROPE_LEN(STR_ROPE_RIGHT(str1)) + len2 <= RSTRING_EMBED_LEN_MAX)
+	{
+	    str3 = rb_rope_new(STR_ROPE_LEN(str1),
+		    rb_str_plus(STR_ROPE_RIGHT(str1), str2));
+	}
+	else
+	    str3 = rb_rope_new(str1, str2);
     }
     else
     {
