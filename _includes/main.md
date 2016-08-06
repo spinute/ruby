@@ -51,39 +51,50 @@ Rubyのユーザーは多くの場合、Stack/Queue/Listなどのデータ構造
 一方で、用途に応じて真に効率的なデータ構造が異なり、それらを適切に使い分けることでより効率的な処理が行えることも事実です。
 このプロジェクトでは、ユーザーには意識させることなく、処理系の内部でデータ構造を動的に切り替えることで、Rubyのユーザーにデータ構造の詳細を選択させない高レベルな設計とデータ操作の効率性とを両立することを目指しました。
 
-## Background
-最終的な成果の中心としては文字列の実装として既存の配列ベースのものとは別に、Ropeと呼ばれる木構造による表現を実装し、木構造が有利な処理が文字列に適用される際には文字列の内部表現を自動的にRopeに切り替える、という処理を導入しました。
+## 概要
+以下、単にRubyといった時に、特にMRIの実装のことを指すことに注意します。(他のRuby実装としてJRuby, Rubiniusなどもありますが、内部実装には詳しくありません。)
+このプロジェクトはプログラミング言語Rubyの処理系実装MRIのデータ構造の実装改善を目指すものです。
+最終的な成果の中心としては文字列の実装として既存の配列ベースのものとは別に、Ropeと呼ばれる木構造による表現を実装し、木構造が有利な処理が文字列に適用される際には文字列の内部表現としてRopeを使う、という処理を導入しました。
+最も主要な効果としては、既存の実装では文字列の連結に+演算子を使うと非常に遅く、Rubyの内部実装を知るプログラマは<<演算子を利用することでこの問題を回避していたのですが、+演算子を利用した際にも<<演算子を使用した場合と大差ない性能を透過的に得られるようになりました。
+また、他にも部分文字列の取得や、中間文字の削除などの演算をRope表現を持つ文字列に対して適用した場合には計算量的に優位に実行することができるようになっています。
 
-目に見える効果として、ひとつRubyの既存の実装の問題点を例に挙げ説明をします。
-
-既存の実装では文字列の連結に+メソッドを使うと遅く、Rubyの内部実装を知るプログラマは<<メソッドを利用することできる場面ではこちらを利用し、この問題を回避する、というハックがありました。
-修正後の実装では、+メソッドを利用した際にも<<メソッドを使用した場合と大差ない性能を透過的に得られるようになりました。
-
-これは+メソッドの振る舞いとして、a+bを行うとき、aとbを結合した後の文字列を保持するのに十分なバッファを作成し、そこにa、bの内容をコピーする処理が行われます。
-一方で<<メソッドでは、a << bを行うときaの持つバッファにbをコピーします。この際にaが十分なバッファを持っている場合にはbだけがコピーされ、aのバッファが足りない時に限り新たに拡張したバッファを確保し、そこにaとbをコピーする、という処理を行います。
-
-そのため、+では呼び出し回数だけa,bが共にコピーされ、また常に新たなオブジェクトが生成されているのに対して、<<においてはオブジェクトの生成とaのコピーはバッファが不足するときのみ発生することになります。
-バッファの拡張は倍々に行われるため、例えば文字列を繰り返し2つ連結する処理を繰り返すことを考えると、コピーされる文字の量は+では最終文字列長の二乗オーダーである一方で、<<では高々2倍程度とオーダーレベルで差があります。
-
-ここで、Ropeにおける+演算の説明を行います。
-Ropeは演算の結果を遅延評価するデータ構造と考える事ができます。
-今回の実装ではRopeはimmutableなデータ構造として実装しました。
-Ropeの葉ノードにはStringオブジェクトを、内部ノードは連結を表現しています。
-+操作自体は2つのノードを指すポインタを保持するだけなので定数時間で実行できます。
-実際に連結された文字列を取り出すときに、木をトラバースし、葉に入っている文字列を集めた文字列オブジェクトを生成します。
-この処理においては最終的な文字列のサイズがわかるため、先ほどの毎回の文字列のコピーや、バッファの拡張などが不要になっています。
-
-他にも部分文字列の取得や、中間文字の削除などの演算をRope表現を持つ文字列に対して適用した場合には計算量的に優位に実行することができるようになっています。
+計算量の比較
+Rope Array
+結合 O(1) O(l)
+削除 O()
+部分文字列の取得
 
 これらの計算量的に優位なデータ構造をユーザーが明示的に利用するための拡張ライブラリは存在していましたが、これはRubyで実装されていました。
-このプロジェクトの成果のひとつとして、C言語での拡張ライブラリの実装を行いました。
+このプロジェクトの成果のひとつとして、C言語での実装を行いました。
 
-また、ユーザーからみて透過的にRopeが利用される、動的なデータ構造の自動選択を実装しました。
+また、ユーザーからみて透過的に
 C言語などのより低レベルな言語ではユーザーはデータ構造を選択し、その実装を行い、その後そのデータ構造を利用する手順が一般的です。
 一方で、Rubyのような高レベルな言語のユーザーはこのような低レベルな詳細をできれば意識したくないものかと思います。
 例えば、RubyにはListが言語のコアに含まれていません。Rubyのユーザーは基本的にArrayをlist, stack, queueの代わりに多くのオペレーションを備えたarrayを使います。
 しかしながら、用途に応じて真に効率的なデータ構造が異なるのも事実です。
 このプロジェクトでは、Rubyのこのような特徴を尊重しながら、ユーザーに効率的なデータ処理を提供することを目指しました。
+
+## Rubyにおける文字列の実装と、Ropeの長所/短所
+Rubyにおけるオブジェクトは
+また、Rubyの文字列はmutableです。
+str = str + str1
+を実行すると、strの文字列の後にstr1の文字列をくっつけた文字列オブジェクトを新たに生成し、これをstrは保持します
+
+一方で、
+str << str2
+では、strの文字列バッファの末尾に直接str2の文字列をコピーします
+ただし、このときにバッファが小さい場合にはバッファの拡張が発生します。
+
+このため、前者では新たなオブジェクトの生成str, str1両方のコピーが発生するのに対し、後者ではバッファの拡張が不要な場合にはコピーが一回発生するだけで済むため、後者が高速でした。
+これは上の演算を繰り返すときに、strが何度もコピーされることが大きな原因であると考えられます。
+
+今回のRopeを使った実装ではこの問題点をユーザーから見ると透過的に解決しています。
+現在の実装では+演算までの実装となっていますが、このような最適化が可能なオペレーションは他にも数多く存在します。
+例えば、
+これは既にRopeは実装されているので各関数の処理を実装するだけでよく、実現可能な見通しはあるので今後の取り組もうかと考えています。
+
+また、副次的な利点として、Rubyの文字列表現として、immutableなものを導入することができているという点があります。
+immutableなオブジェクトは最適化をかけやすく、例えば並列操作が比較的容易といった点で今後のRubyの並列化の際に活用できる可能性もあるかと思います。
 
 ## C言語で実装されたRope拡張ライブラリ
 これはRopeにおける文字列の処理を高速化することを確認するためのプロトタイプとして行いました。
@@ -110,9 +121,9 @@ GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほ
 その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものを選定し、仕様を議論しながら実装を何種類か投稿しました。
 これがオープンソースプログラムへの初めてのコミットとなります。(まだパッチはマージしていませんが、7月のRuby開発者会議の際に開発者のみなさまにフィードバックを頂きまして、まつもとさんに機能としてはまああっていいんじゃないかという肯定的なお返事を頂きまして、現在修正パッチを投稿しています。)
 
-During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/) and ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/) at first.
+During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/), ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/)at first.
 After that I selected an issue posted in (Bug Tracker System of Ruby)[https://bugs.ruby-lang.org/issues] at the perspective of having relation with the topic in this project and not going too complicated.
-I selected this issue [\"String#concat, Array#concat, String#prepend to take multiple arguments\"](https://bugs.ruby-lang.org/issues/12333) as my first activity diving into Ruby internal , and implemented a feature that enable methods such as concat, prepend and delete in Array and String to have have multiple arguments.
+I selected this issue [`String#concat`, `Array#concat`, `String#prepend` to take multiple arguments](https://bugs.ruby-lang.org/issues/12333) as my first activity diving into Ruby internal , and implemented a feature that enable methods such as concat, prepend and delete in Array and String to have have multiple arguments.
 I discussed some details and possible implementation on the page, and posted 3 patches.
 I also reported this implementation in a developer's meeting on July, and got some feedbacks about implementation from Ruby committers and positive response for this feature from Matz.
 

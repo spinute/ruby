@@ -1,0 +1,16 @@
+# This file is *NOT* reloaded automatically when you use 'jekyll serve'.
+# If you change this file, please restart the server process.
+
+# Site settings
+title: GSoC 2016, spinute
+email: spinutids(at)(gmail)
+baseurl: ""
+url: "http://spinute.org/ruby"
+twitter_username: spinute
+github_username:  spinute
+
+# Build settings
+markdown: kramdown
+gem:
+    - jekyll-seo-tag
+    - jekyll-sitemap
