@@ -2048,7 +2048,7 @@ rb_str_plus(VALUE str1, VALUE str2)
 			rb_str_plus(STR_ROPE_RIGHT(str1), str2));
 	}
 	else if (STR_ROPE_P(str2) &&
-		RSTRING_LEN(STR_ROPE_LEFT(str2)) + len1 <= RSTRING_EMBED_LEN_MAX) {
+		len1 + RSTRING_LEN(STR_ROPE_LEFT(str2)) <= RSTRING_EMBED_LEN_MAX) {
 	    str3 = rb_rope_new(rb_rope_new(str1, STR_ROPE_LEFT(str2)),
 		    STR_ROPE_RIGHT(str2));
 	}
@@ -2567,10 +2567,10 @@ rb_rope_str_subseq(VALUE str, long i, long n)
     VALUE str_new, left, right;
     long llen;
     if (!STR_ROPE_P(str)) {
-	if (n == GET_RSTRING_ROPE_LEN(str)) {
+	if (n == RSTRING_LEN(str)) {
 	    return str;
 	}
-	str_new = rb_str_new_frozen(rb_str_new_frozen(str));
+	str_new = rb_str_new_shared(rb_str_new_frozen(str));
 	RSTRING_NOEMBED_PTR(str_new) += i;
 	return str_new;
     } else {
