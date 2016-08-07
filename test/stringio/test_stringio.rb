@@ -1,6 +1,7 @@
 # frozen_string_literal: false
 require 'test/unit'
 require 'stringio'
+require "rbconfig/sizeof"
 require_relative '../ruby/ut_eof'
 
 class TestStringIO < Test::Unit::TestCase
@@ -679,5 +680,24 @@ class TestStringIO < Test::Unit::TestCase
     assert_warn(/does not take block/) do
       StringIO.new {}
     end
+  end
+
+  def test_overflow
+    skip if RbConfig::SIZEOF["void*"] > RbConfig::SIZEOF["long"]
+    limit = (1 << (RbConfig::SIZEOF["void*"]*8-1)) - 0x10
+    assert_separately(%w[-rstringio], "#{<<-"begin;"}\n#{<<-"end;"}")
+    begin;
+      limit = #{limit}
+      ary = []
+      while true
+        x = "a"*0x100000
+        break if [x].pack("p").unpack("i!")[0] < 0
+        ary << x
+        skip if ary.size > 100
+      end
+      s = StringIO.new(x)
+      s.gets("xxx", limit)
+      assert_equal(0x100000, s.pos)
+    end;
   end
 end

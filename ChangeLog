@@ -1,3 +1,1319 @@
+Mon Jul 25 16:59:00 2016  Koichi Sasada  <ko1@atdot.net>
+
+	* debug.c (ruby_debug_printf): use rb_raw_obj_info()
+	  instead of rb_inspect() because it is more robust way
+	  to see object internal.
+
+Sun Jul 24 16:33:13 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* regenc.h/c, include/ruby/oniguruma.h, enc/ascii.c, big5.c, cp949.c,
+	  emacs_mule.c, euc_jp.c, euc_kr.c, euc_tw.c, gb18030.c, gbk.c,
+	  iso_8859_1|2|3|4|5|6|7|8|9|10|11|13|14|15|16.c, koi8_r.c, koi8_u.c,
+	  shift_jis.c, unicode.c, us_ascii.c, utf_16|32be|le.c, utf_8.c,
+	  windows_1250|51|52|53|54|57.c, windows_31j.c, unicode.c:
+	  Remove conditional compilation macro ONIG_CASE_MAPPING. [Feature #12386].
+
+Sun Jul 24 12:53:42 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* doc/maintainers.rdoc: xmlrpc is bundled gem from Ruby 2.4.
+
+Sun Jul 24 12:07:39 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* doc/maintainers.rdoc: Update OpenSSL maintainer.
+
+Sat Jul 23 22:43:41 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* internal.h (Check_Type): inline check for the object type.
+
+Sat Jul 23 04:06:04 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/ruby.h (RTEST, NIL_P): use RUBY prefixed name in
+	  macros.
+
+Sat Jul 23 01:41:29 2016  Eric Wong  <e@80x24.org>
+
+	* lib/webrick/httpservlet/cgihandler.rb (do_GET): delete HTTP_PROXY
+	* test/webrick/test_cgi.rb (test_cgi_env): new test
+	* test/webrick/webrick.cgi (do_GET): new endpoint to dump env
+	  [ruby-core:76511] [Bug #12610]
+
+Fri Jul 22 19:55:20 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm.c (vm_set_main_stack): remove unnecessary check.  toplevel
+	  binding must be initialized.  [Bug #12611] (N1)
+
+	* win32/win32.c (w32_symlink): fix return type.  [Bug #12611] (N3)
+
+	* string.c (rb_str_split_m): simplify the condition.
+	  [Bug #12611](N4)
+
+Fri Jul 22 17:13:37 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* string.c (String#dump): Change escaping of non-ASCII characters in
+	  UTF-8 to use upper-case four-digit hexadecimal escapes without braces
+	  where possible [Feature #12419].
+
+	* test/ruby/test_string.rb (test_dump): Add tests for above.
+
+Fri Jul 22 10:35:35 2016  Kouhei Sutou  <kou@cozmixng.org>
+
+	* lib/rexml/attribute.rb (REXML::Attribute#to_string): Fix wrong
+	  entry reference name of double quote.
+	  [Bug #12609][ruby-core:76509]
+	  Patch by Joseph Marrero. Thanks!!!
+
+Fri Jul 22 10:32:13 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* template/unicode_norm_gen.tmpl: Remove
+	  UnicodeNormalize::UNICODE_VERSION at origin [Feature #12546].
+
+Fri Jul 22 09:23:51 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* LEGAL: Added entries for files under the USD license.
+	  [Bug #12598][ruby-core:76428][ci skip]
+
+Fri Jul 22 09:19:57 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* LEGAL: Added entry for `lib/rdoc/generator/template/darkfish/css/fonts.css`
+	  [Misc #12550][ruby-core:76255][ci skip]
+
+Fri Jul 22 06:28:32 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.c (run_finalizer): push and exec tag just once, instead of
+	  protecting for each finalizer.
+
+	* gc.c (gc_start_internal, rb_gc_start): set finalizing flag
+	  whenever calling deferred finalizers not to recurse.
+
+Thu Jul 21 22:26:40 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* missing/strl{cat,cpy}.c: Update latest upstream files.
+	  [Misc #12205][ruby-core:74487]
+	* LEGAL: Update license for missing/strl{cat,cpy}.c.
+
+Thu Jul 21 21:53:30 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* LEGAL: added file list with Public domain license.
+	  [ruby-core:76254][Bug #12549]
+
+Wed Jul 20 17:44:07 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* enumerator.c (lazy_uniq): new method Enumerator::Lazy#uniq.
+	  [Feature #11090]
+
+	* enum.c (enum_uniq): new method Enumerable#uniq.
+	  [Feature #11090]
+
+Wed Jul 20 17:35:23 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* hash.c (rb_hash_add_new_element): add new element or do nothing
+	  if it is contained already.
+
+	* array.c (ary_add_hash, ary_add_hash_by): use
+	  rb_hash_add_new_element.
+
+Tue Jul 19 18:21:17 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* lib/unicode_normalize/tables.rb: Remove
+	  UnicodeNormalize::UNICODE_VERSION (#12546).
+
+Tue Jul 19 15:38:59 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* variable.c (rb_local_constants_i): exclude private constants
+	  when excluding inherited constants too.  [Bug #12345]
+
+Sun Jul 17 23:42:00 2016  Kenta Murata  <mrkn@mrkn.jp>
+
+	* numeric.c (num_finite_p, num_infinite_p): Add Numeric#finite? and
+	  Numeric#infinite?  [Feature #12039] [ruby-core:73618]
+
+	* complex.c (rb_complex_finite_p): Add Complex#finite?
+
+	* complex.c (rb_complex_infinite_p): Add Complex#infinite?
+
+	* test/ruby/test_bignum.rb: Add test for Integer#finite? and
+	  Integer#infinite?
+
+	* test/ruby/test_fixnum.rb: ditto.
+
+	* test/ruby/test_rational.rb: Add test for Rational#finite? and
+	  Rational#infinite?
+
+	* test/ruby/test_complex.rb: Add test for Complex#finite? and
+	  Complex#infinite?
+
+Sun Jul 17 20:59:24 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* common.mk, enc/depend (casefold.h, name2ctype.h): move to
+	  unicode data directory per version.
+
+Sat Jul 16 06:26:00 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* common.mk, enc/Makefile.in: moved timestamp files for
+	  directories under the specific directory, to get rid of match
+	  with files under the source directory.
+
+Fri Jul 15 22:05:13 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c (str_buf_cat): Fix potential integer overflow of capa.
+	  In addition, termlen is used instead of +1.
+
+Fri Jul 15 21:30:38 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c (str_buf_cat): Fix capa size for embed string.
+	  Fix bug in r55547. [Bug #12536]
+
+Fri Jul 15 18:13:15 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* gems/bundled_gems: update latest gems.
+
+Fri Jul 15 17:08:57 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* util.c (ruby_strtod): do not underflow only by preceeding zeros,
+	  which may be canceled out by the exponent.
+	  http://twitter.com/kazuho/status/753829998767714305
+
+Fri Jul 15 09:53:48 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* enc/unicode/case-folding.rb, tool/enc-unicode.rb: check if
+	  Unicode versions are consistent with each other.
+
+Fri Jul 15 08:25:15 2016  Jeremy Evans <code@jeremyevans.net>
+
+	* string.c (STR_BUF_MIN_SIZE): reduce from 128 to 127
+	  [ruby-core:76371] [Feature #12025]
+	* string.c (rb_str_buf_new): adjust for above reduction
+
+Thu Jul 14 17:26:00 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* Makefile.in (enc/unicode/name2ctype.h): remove stale recipe,
+	  which did not support Unicode age properties.
+
+	* common.mk (enc/unicode/name2ctype.h): update by --header option
+	  of tool/enc-unicode.rb.  enc/unicode/name2ctype.kwd file has not
+	  been used.
+
+	* common.mk (enc/unicode/name2ctype.kwd): rule to create from
+	  Unicode data files, used only when the target does not exist.
+
+Thu Jul 14 13:10:54 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/json/lib/json/ext: remove stale directory.  bundled
+	  extension libraries are placed under the directory for each
+	  architectures, but not mixed with plain text script libraries.
+
+Thu Jul 14 12:48:47 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* ext/json/**/*.rb: merge original files from upstream repository.
+	  It only fixes styles of frozen string literal.
+
+Wed Jul 13 22:23:03 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* test/json/json_common_interface_test.rb: use assert_raise instead of
+	  assert_raises.
+
+Wed Jul 13 22:14:23 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* test/lib/test/unit.rb: added test files with `_test` suffix for json
+	  upstream.
+	* test/json: merge original test files from json upstream.
+
+Wed Jul 13 18:09:42 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_9.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-9, by Kazuki Iijima.
+
+	* enc/iso_8859_9.c: Exclude dotless i/I with dot from case-insensitive
+	  matching because they are not a case pair.
+
+	* test/ruby/enc/test_iso_8859.rb: Make test coverage for ISO-8859-9
+	  a bit more complete.
+
+Wed Jul 13 17:21:24 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/windows_1252.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for Windows-1252, by Serina Tai.
+
+	* test/ruby/enc/test_case_comprehensive.rb: Fix order of encodings.
+
+Wed Jul 13 16:19:14 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_7.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-7, by Kosuke Kurihara.
+
+	* test/ruby/enc/test_case_comprehensive.rb: Fix order of encodings.
+
+Wed Jul 13 16:08:08 2016  Koichi Sasada  <ko1@atdot.net>
+
+	* gc.c (gc_mark_roots): should mark the VM object itself to mark
+	  singleton class of the VM object.
+	  Before this patch, we only set mark bit for the VM object and
+	  invoke mark function separately.
+	  [Bug #12583]
+
+	* test/ruby/test_gc.rb: add a test.
+
+Wed Jul 13 15:59:59 2016  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* math.c (_USE_MATH_DEFINES): it must be set before including internal.h
+	  because internal.h includes ruby.h, ruby.h includes win32.h, and
+	  win32.h includes system's math.h.
+	  this change is to get rid of a compiler warning (redefinition of
+	  a macro) introduced at r55641.
+
+Wed Jul 13 15:19:03 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_1.c, enc/iso_8859_4.c: Avoid setting modification flag if
+	  there is no modification.
+
+Wed Jul 13 14:40:04 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_5.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-5, by Masaru Onodera.
+
+	* test/ruby/enc/test_case_comprehensive.rb: Fix order of encodings.
+
+Wed Jul 13 14:28:33 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* math.c (rb_math_sqrt): r55646 must use f_signbit.
+
+Wed Jul 13 14:22:50 2016  Koichi Sasada  <ko1@atdot.net>
+
+	* iseq.c (Init_ISeq): undef ISeq.translate and ISeq.load_iseq
+	  to prevent calling super classes' methods.
+
+	  Without this patch, you can write workaround like:
+
+	    class << RubyVM::InstructionSequence
+	      def translate; end
+	      undef translate
+	    end
+
+	* test/ruby/test_iseq.rb: add a test.
+
+Wed Jul 13 14:16:03 2016  Koichi Sasada  <ko1@atdot.net>
+
+	* vm_method.c (method_entry_get_without_cache): check
+	  undefined method even if ruby_running is FALSE.
+
+	  We haven't call "undef"ed methods before ruby_running.
+	  So that this issue does not make troubles.
+
+Wed Jul 13 14:15:22 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/windows_1254.c: Adjust variable/macro names.
+
+Wed Jul 13 13:19:12 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_9.c, enc/windows_1254.c: Split Windows-1254 from
+	  ISO-8859-9 to be able to implement different case conversions.
+
+Wed Jul 13 13:08:30 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_7.c, enc/windows_1253.c: Split Windows-1253 from
+	  ISO-8859-7 to be able to implement different case conversions.
+
+Wed Jul 13 10:50:12 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_13.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-13, by Kanon Shindo.
+
+Wed Jul 13 10:31:39 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_13.c, enc/windows_1257.c: Split Windows-1257 from
+	  ISO-8859-13 to be able to implement different case conversions.
+
+Wed Jul 13 09:02:30 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_3.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-3, by Takuya Miyamoto.
+
+	* test/ruby/enc/test_case_comprehensive.rb: Extend special treatment
+	  for Turkic.
+
+	* enc/iso_8859_3.c: Exclude dotless i/I with dot from case-insensitive
+	  matching because they are not a case pair.
+
+Wed Jul 13 08:40:21 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_iso_8859.rb: Exclude dotless i/I with dot from
+	  case-insensitive matching because they are not a case pair.
+
+Tue Jul 12 23:13:43 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* math.c (rb_math_sqrt): [EXPERIMENTAL] move Complex sqrt support
+	  from mathn.rb.
+
+Tue Jul 12 01:25:09 2016  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* configure.in, lib/mkmf.rb, win32/Makefile.sub (CSRCFLAG): make the
+	  compiler option replacable in Makefile.
+
+	* win32/Makefile.sub (OUTFLAG, COUTFLAG): ditto.
+
+	* win32/Makeile.sub, win32/setup.mak (CC): should not append `-nologo`
+	  option forcely.
+
+Mon Jul 11 18:05:40 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_1.c: Moved test for lowercase characters without
+	  uppercase equivalent.
+
+Mon Jul 11 17:49:25 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_4.c, enc/iso_8859_10.c, enc/iso_8859_14.c,
+	  enc/iso_8859_15.c, enc/iso_8859_16.c: Replace case-by-case code with
+	  lookup in ENC_ISO_8859_xx_TO_LOWER_CASE table.
+
+Mon Jul 11 16:00:56 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/stringio/stringio.c (strio_each, strio_readlines): convert
+	  arguments just once before reading, instead of conversions for
+	  each lines, as r55603.
+
+Sun Jul 10 19:53:41 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_10.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-10, by Toya Hosokawa.
+
+Sun Jul 10 19:33:47 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_case_comprehensive.rb: Changed testing logic to
+	  catch unintended modifications of characters that do not have a case
+	  equivalent in the respective encoding.
+	* enc/iso_8859_1.c, enc/iso_8859_15.c: Fixed unintended modifications of
+	  micro sign and y with diaeresis.
+
+Sun Jul 10 17:05:36 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_4.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-4, by Kotaro Yoshida.
+
+Sun Jul 10 16:17:47 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_case_comprehensive.rb: Fixed a comment
+	  (message belongs to last commit). [ci skip]
+
+Sun Jul 10 14:27:25 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* util.c (ruby_dtoa): [EXPERIMENTAL] adjust the case that the
+	  Float value is close to the exact but unrepresentable middle
+	  value of two values in the given precision, as r55604.
+
+Sun Jul 10 08:57:20 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* thread.c: Fixed implicit conversion error with Apple clang-800.0.31
+
+Sat Jul  9 12:43:09 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/getoptlong.rb: use false instead of FALSE.
+
+Fri Jul  8 21:49:28 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* thread.c (rb_wait_for_single_fd): Clean up fds.revents every time
+	  before calling ppoll(2). [Bug #12575] [ruby-dev:49725]
+
+Fri Jul  8 14:16:48 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* vm_args.c (vm_caller_setup_arg_block): call rb_sym_to_proc()
+	  directly to reduce method dispatch overhead.
+
+Fri Jul  8 08:43:31 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* io.c (rb_io_s_read): add description of pipes to the documentation
+	  of IO.read.
+
+Fri Jul  8 03:54:22 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* vm_args.c (setup_parameters_complex): don't raise ArgumentError
+	  if an array is given for instance_exec with optional argument.
+	  [ruby-core:76300] [Bug #12568]
+	  https://github.com/rails/rails/pull/25699
+
+Fri Jul  8 00:47:36 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* vm_eval.c (yield_under): change prototype to get argc/argv.
+
+	* vm_eval.c (specific_eval): change for above.
+
+	* vm_eval.c (rb_obj_instance_exec): avoid object allocation.
+
+	* vm_eval.c (rb_mod_module_exec): ditto.
+
+Thu Jul  7 20:08:37 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* vm_args.c (vm_caller_setup_arg_block): disable symbol block
+	  argument optimization when tail call optimization is enabled,
+	  in order to avoid SEGV.  [ruby-core:76288] [Bug #12565]
+
+Thu Jul  7 16:37:53 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* numeric.c (flo_round): [EXPERIMENTAL] adjust the case that the
+	  receiver is close to the exact but unrepresentable middle value
+	  of two values in the given precision.
+	  http://d.hatena.ne.jp/hnw/20160702
+
+Thu Jul  7 16:31:07 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (rb_io_s_foreach, rb_io_s_readlines): convert arguments
+	  just once before reading, instead of conversions for each lines.
+
+Wed Jul  6 19:54:17 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_14.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-14, by Yutaro Tada.
+
+Wed Jul  6 19:24:48 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_1.c, enc/iso_8859_15.c, enc/iso_8859_16.c:
+	  Align indenting to onigmo convention.
+
+Wed Jul  6 18:59:13 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_15.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-15, by Maho Harada.
+
+Wed Jul  6 18:34:21 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_16.c, test/ruby/enc/test_case_comprehensive.rb:
+	  Implement non-ASCII case conversion for ISO-8859-16, by Satoshi Kayama.
+
+Wed Jul  6 14:44:56 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/mkmf.rb (create_makefile): store $headers in LOCAL_HDRS for
+	  depend files.
+
+	* ext/digest/digest_conf.rb (digest_conf): add implementation
+	  specific headers to $header.
+
+	* ext/digest/{md5,rmd160,sha1,sha2}/depend: add LOCAL_HDRS to the
+	  dependencies.
+
+Wed Jul  6 08:59:35 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/net/http/generic_rquest.rb (write_header): A Request-Line must
+	  not contain CR or LF.
+
+Wed Jul  6 07:11:27 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/net/ftp.rb (putline): raise an ArgumentError when
+	  CR or LF is included in a line.
+
+Tue Jul  5 20:49:30 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* ext/json/*, test/json/*: Update json-2.0.1.
+	  Changes of 2.0.0: https://github.com/flori/json/blob/f679ebd0c69a94e3e70a897ac9a229f5779c2ee1/CHANGES.md#2015-09-11-200
+	  Changes of 2.0.1: https://github.com/flori/json/blob/f679ebd0c69a94e3e70a897ac9a229f5779c2ee1/CHANGES.md#2016-07-01-201
+	  [Feature #12542][ruby-dev:49706][fix GH-1395]
+
+Tue Jul  5 19:39:49 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c (rb_str_change_terminator_length): New function to change
+	  termlen and resize heap for the terminator. This is split from
+	  rb_str_fill_terminator (str_fill_term) because filling terminator
+	  and changing terminator length are different things. [Bug #12536]
+
+	* internal.h: declaration for rb_str_change_terminator_length.
+
+	* string.c (str_fill_term): Simplify only to zero-fill the terminator.
+	  For non-shared strings, it assumes that (capa + termlen) bytes of
+	  heap is allocated. This partially reverts r55557.
+
+	* encoding.c (rb_enc_associate_index): rb_str_change_terminator_length
+	  is used, and it should be called whenever the termlen is changed.
+
+	* string.c (str_capacity): New static function to return capacity
+	  of a string with the given termlen, because the termlen may
+	  sometimes be different from TERM_LEN(str) especially during
+	  changing termlen or filling terminator with specific termlen.
+
+	* string.c (rb_str_capacity): Use str_capacity.
+
+Tue Jul  5 11:07:14 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* pack.c (pack_pack): use union instead of bare variable to ease
+	  optimizations and avoid assigning x87 floating point number.
+	  [ruby-core:74496] [Bug #12209]
+
+	* pack.c (pack_unpack): ditto.
+
+Mon Jul  4 13:56:34 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* process.c: define sig_t if not exist.
+	  at least Solaris 10 and 11 doesn't have sig_t.
+
+Mon Jul  4 13:08:48 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* random.c (random_ulong_limited): avoid left shift count >= width of
+	  type on 32bit environment.
+
+Sun Jul  3 18:51:42 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_case_comprehensive.rb, test_regex_casefold.rb,
+	  test/test_unicode_normalize.rb: Replace UNICODE_VERSION from
+	  UnicodeNormalize with RbConfig::CONFIG['UNICODE_VERSION'] from
+	  feature 12460.
+
+Sun Jul  3 06:04:09 2016  Eric Wong  <e@80x24.org>
+
+	* process.c (disable_child_handler_fork_child): simplify
+	  [ruby-core:75781] [Misc #12439]
+
+Sun Jul  3 05:25:46 2016  Eric Wong  <e@80x24.org>
+
+	* tool/asm_parse.rb: add description
+	* tool/change_maker.rb: ditto
+	* tool/downloader.rb: ditto
+	* tool/eval.rb: ditto
+	* tool/expand-config.rb: ditto
+	* tool/extlibs.rb: ditto
+	* tool/fake.rb: ditto
+	* tool/file2lastrev.rb: ditto
+	* tool/gem-unpack.rb: ditto
+	* tool/gen_dummy_probes.rb: ditto
+	* tool/gen_ruby_tapset.rb: ditto
+	* tool/generic_erb.rb: ditto
+	* tool/id2token.rb: ditto
+	* tool/ifchange: ditto
+	* tool/insns2vm.rb: ditto
+	* tool/instruction.rb: ditto
+	* tool/jisx0208.rb: ditto
+	* tool/merger.rb: ditto
+	* tool/mkrunnable.rb: ditto
+	* tool/node_name.rb: ditto
+	* tool/parse.rb: ditto
+	* tool/rbinstall.rb: ditto
+	* tool/rbuninstall.rb: ditto
+	* tool/rmdirs: ditto
+	* tool/runruby.rb: ditto
+	* tool/strip-rdoc.rb: ditto
+	* tool/vcs.rb: ditto
+	* tool/vtlh.rb: ditto
+	* tool/ytab.sed: ditto
+	* tool/enc-unicode.rb: fix typo
+	* tool/mk_call_iseq_optimized.rb: ditto
+	* tool/update-deps: ditto
+	  [ruby-core:76215] [Bug #12539]
+	  by Noah Gibbs <the.codefolio.guy@gmail.com>
+
+Sat Jul  2 18:04:24 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/uri/mailto.rb (initialize): RFC3986_Parser#split sets opaque
+	  only if the URI has path-rootless, not path-empty.
+	  [ruby-core:76055] [Bug #12498]
+	  patched by Chris Heisterkamp <cheister@squareup.com>
+
+Sat Jul  2 04:26:14 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* regcomp.c (noname_disable_map): don't optimize out group 0
+	  Ruby's Regexp doesn't allow normal numbered groups if the regexp
+	  has named groups. On such case it optimizes out related NT_ENCLOSE.
+	  But even on the case it can use \g<0>.
+	  This fix not to remove NT_ENCLOSE whose regnum is 0.
+	  [ruby-core:75828] [Bug #12454]
+
+Sat Jul  2 03:09:27 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c: Partially reverts r55547 and r55555.
+	  ChangeLog about the reverted changes are also deleted in this file.
+	  [Bug #12536] [ruby-dev:49699] [ruby-dev:49702]
+
+Sat Jul  2 02:22:22 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c (str_fill_term): When termlen increases, re-allocation
+	  of memory for termlen should always be needed.
+	  In this fix, if possible, decrease capa instead of realloc.
+	  [Bug #12536] [ruby-dev:49699]
+
+Fri Jul  1 20:20:20 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c: Specify termlen as far as possible.
+	  Additional fix for [Bug #12536] [ruby-dev:49699].
+
+	* string.c (str_new_static): Specify termlen from the given encoding
+	  when creating a new String object is needed.
+
+	* string.c (rb_tainted_str_new_with_enc): New function to create a
+	  tainted String object with the given encoding. This means that
+	  the termlen is correctly specified. Currently static function.
+	  The function name might be renamed to rb_tainted_enc_str_new
+	  or rb_enc_tainted_str_new.
+
+	* string.c (rb_external_str_new_with_enc): Use encoding by using the
+	  above rb_tainted_str_new_with_enc().
+
+Fri Jul  1 19:38:57 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* test/fiddle/test_pointer.rb (test_to_str, test_to_s, test_aref_aset):
+	  Attempt to use independent strings for destructive tests that
+	  directly modify values on memory by using Fiddle::Pointer.
+	  [Bug #12537] [ruby-dev:49700]
+
+Fri Jul  1 18:20:00 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* .gdbinit (rb_ps_thread): show the detail of cfunc in ruby level
+	  backtrace.
+
+Fri Jul  1 13:26:39 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c (rb_str_subseq, str_substr): When RSTRING_EMBED_LEN_MAX
+	  is used, TERM_LEN(str) should be considered with it because
+	  embedded strings are also processed by TERM_FILL.
+	  Additional fix for [Bug #12536] [ruby-dev:49699].
+
+Fri Jul  1 12:11:01 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* .gdbinit (rb_count_objects): added gdb version of count_objects().
+
+Fri Jul  1 04:32:52 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* .gdbinit (rb_ps_thread): show ruby level backtrace.
+	  Usually you can call `rb_ps` to show ruby level backtraces
+	  for all living threads.
+	  Note that it can call with core file like `gcore <pid>`
+	  and `gdb ruby core.<pid>`.
+
+Thu Jun 30 19:15:13 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* string.c: Fix memory corruptions when using UTF-16/32 strings.
+	  [Bug #12536] [ruby-dev:49699]
+
+	* string.c (rb_str_new_with_class): Use TERM_LEN of the "obj".
+
+	* string.c (rb_str_plus, rb_str_justify): Use str_new0 which is aware
+	  of termlen.
+
+	* string.c (str_shared_replace): Copy +termlen bytes instead of +1.
+
+	* string.c (rb_str_times): termlen should not be included in capa.
+
+	* string.c (RESIZE_CAPA_TERM): When using RSTRING_EMBED_LEN_MAX,
+	  termlen should be counted with it because embedded strings are
+	  also processed by TERM_FILL.
+
+	* string.c (rb_str_capacity, str_shared_replace, str_buf_cat): ditto.
+
+	* string.c (rb_str_drop_bytes, rb_str_setbyte, str_byte_substr): ditto.
+
+Wed Jun 29 22:24:37 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* ext/psych/lib/psych_jars.rb: removed needless file required to JRuby.
+
+Wed Jun 29 22:21:38 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c: The "reuse" behavior of d2i_ functions does
+	  not work well with OpenSSL 1.0.0t. So avoid it.
+
+Wed Jun 29 15:18:28 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* insns.def (opt_succ): optimize like r55515. (but this argument is
+	  constant)
+
+Wed Jun 29 12:41:58 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* test/ruby/test_refinement.rb: skip
+	  test_prepend_after_refine_wb_miss on ARM or MIPS.
+	  [ruby-core:76031] [Bug #12491]
+
+Wed Jun 29 08:45:53 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* proc.c (passed_block): convert passed block symbol to proc.
+	  based on the patch by Daisuke Sato in [ruby-dev:49695].
+	  [Bug #12531]
+
+Wed Jun 29 03:34:41 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* bignum.c (rb_big2ulong): the old logic seems to try to avoid
+	  calculating `-(long)(num-1)-1` if `num` is not LONG_MIN. (Note that
+	  `-LONG_MIN` may be larger than LONG_MAX) But C compilers can
+	  optimize it into single NEG instruction.
+	  Therefore those two conditions can be single if-body.
+
+	* bignum.c (rb_big2long): ditto.
+
+	* bignum.c (rb_big2ull): ditto.
+
+	* bignum.c (rb_big2ll): ditto.
+
+Tue Jun 28 22:55:00 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/pstore.rb (PStore::CHECKSUM_ALGO): extract the algorithm for
+	  checksum, instead of qualified names for each times.
+
+Tue Jun 28 22:29:36 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* bootstraptest/runner.rb: do not use safe navigation operator.
+	  this runner may run on older ruby.  partially revert r53110
+	  (GH-1142 patched by @mlarraz).
+
+Tue Jun 28 22:09:09 2017  Akio Tajima <artonx@yahoo.co.jp>
+
+	* lib/fileutils.rb: rescue Errno:EACCES for chown.
+	  [Bug #12520]
+
+Tue Jun 28 18:38:09 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ext/digest/md5/md5ossl.h: Remove excess semicolons.
+	  Suppress warning on Solaris with Oracle Solaris Studio 12.
+	  [ruby-dev:49692] [Bug #12524]
+
+	* ext/digest/md5/md5cc.h: ditto.
+	* ext/digest/sha1/sha1cc.h: ditto.
+	* ext/digest/sha1/sha1ossl.h: ditto.
+	* ext/digest/sha2/sha2cc.h: ditto.
+	* ext/digest/sha2/sha2ossl.h: ditto.
+	* ext/openssl/ossl_pkey_rsa.c: ditto.
+
+Tue Jun 28 15:56:48 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* test/ruby/enc/test_case_comprehensive.rb: noting to test if
+	  Unicode data files are available.
+	  [ruby-core:76160] [Bug #12433]
+
+	* test/test_unicode_normalize.rb: ditto.
+
+Tue Jun 28 15:20:18 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/net/http.rb (Net::HTTP#proxy_uri): cache the case no proxy
+	  is used.
+
+Tue Jun 28 09:56:29 2016  Stefan Schussler  <mail@stefanschuessler.de>
+
+	* object.c (rb_mod_eqq): [DOC] Fix typo in RDoc.  [Fix GH-1393]
+
+Tue Jun 28 02:41:32 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* insns.def (opt_plus): use `- 1` instead of `& (~1)` to allow
+	  compilers to use x86 LEA instruction (3 operand).
+	  Even if 3 operand LEA's latency is 3 cycle after SandyBridge,
+	  it reduces code size and can be faster because of super scalar.
+
+	* insns.def (opt_plus): calculate and use rb_int2big.
+	  On positive Fixnum overflow, `recv - 1 + obj` doesn't carry
+	  because recv's msb and obj's msb are 0, and resulted msb is 1.
+	  Therefore simply rshift and cast as signed long works fine.
+	  On negative Fixnum overflow, it will carry because both arguments'
+	  msb are 1, and resulted msb is also 1.
+	  In this case it needs to restore carried sign bit after rshift.
+
+Mon Jun 27 16:58:32 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/fileutils.rb (FileUtils#install): accecpt symbolic mode, as
+	  well as chmod.
+
+	* lib/fileutils.rb (FileUtils#install): add owner and group
+	  options.
+
+Mon Jun 27 08:56:55 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* compile.c (ADD_TRACE): ignore trace instruction on non-positive
+	  line.
+
+	* parse.y (coverage): get rid of ArgumentError when the starting
+	  line number is not positive.  [ruby-core:76141] [Bug #12517]
+
+Sun Jun 26 10:20:25 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/win32/lib/Win32API.rb (Win32API#initialize): Cygwin
+	  2.5.2-1 (perhaps) seems to no longer append ".dll" suffix
+	  implicitly.
+
+	* ext/win32/lib/win32/resolv.rb (Win32::Resolv): ditto.  Fix the
+	  error reported by yamataka AT u08.itscom.net in
+	  [ruby-list:50339], and pointed out and patched by cerberus AT
+	  m3.kcn.ne.jp in [ruby-list:50341].
+
+Sat Jun 25 10:07:52 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* test/openssl/test_ocsp.rb: Ignore errors caused by bugs that exist in
+	  LibreSSL >= 2.3.1.
+
+Sat Jun 25 02:33:33 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm_method.c (vm_respond_to): try method_missing if respond_to?
+	  is undefined, as if it is the default definition.
+	  [ruby-core:75377] [Bug #12353]
+
+Fri Jun 24 17:04:21 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* ext/psych/*, test/psych/*: Update psych 2.1.0
+	  This version fixed [Bug #11988][ruby-core:72850]
+
+Fri Jun 24 13:12:41 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* lib/rubygems.rb, lib/rubygems/*, test/rubygems/*:
+	  Update rubygems 2.6.5 and 2.6.6.
+	  Release note of 2.6.5: https://github.com/rubygems/rubygems/commit/656f5d94dc888d78d0d00f3598a4fa37391aac80
+	  Release note of 2.6.6: https://github.com/rubygems/rubygems/commit/ccb9c3300c063f5b5656669972d24a10ef8afbf5
+
+Fri Jun 24 09:17:15 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* common.mk (lib/unicode_normalize/tables.rb): should not depend
+	  on Unicode data files unless ALWAYS_UPDATE_UNICODE=yes, to get
+	  rid of downloading Unicode data unnecessary.  [ruby-dev:49681]
+
+	* common.mk (enc/unicode/casefold.h): update Unicode files in a
+	  sub-make, not to let the header depend on the files always.
+
+	* enc/unicode/case-folding.rb: if gperf is not usable, assume the
+	  existing file is OK.
+
+Tue Jun 21 19:44:54 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_regex_casefold.rb: Add Windows-1251, KOI8-R, and
+	  KOI8-U to encodings; definitely removed EUC-JP.
+
+Tue Jun 21 19:32:23 2016  Mark St.Godard  <markstgodard@gmail.com>
+
+	* lib/webrick/httprequest.rb (setup_forwarded_info): Use the first
+	  value in X-Forwarded-Proto, if header contains multiple comma
+	  separated values.  Some middlewares may add these values to the
+	  list, not replacing.  [Fix GH-1386]
+
+Tue Jun 21 17:17:42 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/test_io.rb: Skip test_readpartial_with_not_empty_buffer,
+	  test_read_buffer_error, test_read_unlocktmp_ensure,
+	  test_readpartial_unlocktmp_ensure, and
+	  test_sysread_unlocktmp_ensure on cygwin,
+	  because these tests repeatedly hang. This makes test_io.rb
+	  complete in finite time on cygwin.
+
+	* ChangeLog: Fix test_in.rb -> test_io.rb (two instances).
+
+Tue Jun 21 16:38:14 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_casemap): do not put code with side effects
+	  inside RSTRING_PTR() macro which evaluates the argument multiple
+	  times.
+
+Tue Jun 21 16:13:45 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_casemap): fix memory leak.
+
+Tue Jun 21 16:12:21 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_casemap): int is too small for string size.
+
+Tue Jun 21 15:42:22 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/test_io.rb: Skip test_read_buffer_error on cygwin,
+	  because this test repeatedly hangs.
+
+Tue Jun 21 15:35:14 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* LEGAL: Added filenames and copyrights for some files in
+	  enc/trans/JIS.
+
+Tue Jun 21 00:56:47 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* win32/win32.c (get_special_folder): fix calling convention of
+	  SHGetPathFromIDListEx, which should be WINAPI.  pointed out by
+	  @arton at http://twitter.com/arton/status/744884064277016576
+
+Tue Jun 21 00:22:02 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in, include/ruby/defines.h (RUBY_USE_SETJMPEX):
+	  include setjmpex.h only when using setjmpex() for RUBY_SETJMP.
+	  the header of mingw32 overrides setjmp() by setjmpex().
+
+Mon Jun 20 18:39:16 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/test_io.rb: Skip test_open_fifo_does_not_block_other_threads
+	  on cygwin. Fifos seem to work okay in cygwin, but this test repeatedly
+	  hangs.
+
+Mon Jun 20 13:35:06 2016  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* vm.c (invoke_bmethod, invoke_block_from_c_0): revert r52104
+	  partially to avoid "self has wrong type to call super in this
+	  context" errors.
+	  [ruby-core:72724] [Bug #11954]
+
+Mon Jun 20 12:53:38 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* test/rubygems/test_gem_remote_fetcher.rb: OpenSSL::PKey::DH#priv_key=
+	  is not defined when ext/openssl is built with OpenSSL 1.1.0.
+	  https://github.com/rubygems/rubygems/pull/1648
+	  [ruby-core:75225] [Feature #12324]
+
+Sun Jun 19 21:25:43 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c: Add OCSP::SingleResponse that represents an
+	  OCSP SingleResponse structure. Also add two new methods #responses
+	  and #find_response to OCSP::BasicResponse. A BasicResponse has one or
+	  more SingleResponse. We have OCSP::BasicResponse#status that returns
+	  them as an array of arrays, each containing the content of a
+	  SingleResponse, but this is not useful. When validating an OCSP
+	  response, we need to look into the each SingleResponse and check their
+	  validity but it is not simple. For example, when validating for a
+	  certificate 'cert', the code would be like:
+
+	    # certid_target is an OpenSSL::OCSP::CertificateId for cert
+	    basic = res.basic
+	    result = basic.status.any? do |ary|
+	      ary[0].cmp(certid_target) &&
+	        ary[4] <= Time.now && (!ary[5] || Time.now <= ary[5])
+	    end
+
+	  Adding OCSP::SingleResponse at the same time allows exposing
+	  OCSP_check_validity(). With this, the code above can be rewritten as:
+
+	    basic = res.basic
+	    single = basic.find_response(certid_target)
+	    result = single.check_validity
+
+	* test/openssl/test_ocsp.rb: Test this.
+
+Sun Jun 19 18:40:19 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c (ossl_ocspbres_add_status): Allow specifying
+	  the times (thisUpdate, nextUpdate and revocationTime) with Time
+	  objects. Currently they accepts only relative seconds from the current
+	  time. This is inconvenience, especially for revocationTime. When
+	  Integer is passed, they are still treated as relative times. Since the
+	  type check is currently done with rb_Integer(), this is a slightly
+	  incompatible change. Hope no one passes a relative time as String or
+	  Time object...
+	  Also, allow passing nil as nextUpdate. It is optional.
+
+	* ext/openssl/ruby_missing.h: Define RB_INTEGER_TYPE_P() if not defined.
+	  openssl gem will be released before Ruby 2.4.0.
+
+Sun Jun 19 18:39:38 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c: Implement OCSP::{CertificateId,Request,
+	  BasicResponse,Response}#initialize_copy.
+	  [ruby-core:75504] [Bug #12381]
+
+	* test/openssl/test_ocsp.rb: Test them.
+
+Sun Jun 19 18:29:50 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_pkey_dh.c, ext/openssl/ossl_pkey_dsa.c,
+	  ext/openssl/ossl_pkey_ec.c, ext/openssl/ossl_pkey_rsa.c: Implement
+	  initialize_copy method for OpenSSL::PKey::*.
+	  [ruby-core:75504] [Bug #12381]
+
+	* test/openssl/test_pkey_dh.rb, test/openssl/test_pkey_dsa.rb,
+	  test/openssl/test_pkey_ec.rb, test/openssl/test_pkey_rsa.rb: Test they
+	  actually copy the OpenSSL objects, and modifications to cloned object
+	  don't affect the original object.
+
+Sun Jun 19 16:55:16 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/test_dir_m17n.rb: Skip tests with non-UTF-8 encodings
+	  on cygwin. Cygwin can use the Unicode PUA (private use area) to store
+	  bytes from non-UTF-8 filenames (see
+	  https://cygwin.com/cygwin-ug-net/using-specialnames.html#pathnames-specialchars),
+	  but we are not supporting this. [Bug #12443]
+
+Sun Jun 19 15:01:18 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* localeinit.c: Fix filesystem encoding for cygwin to UTF-8 (see
+	  https://cygwin.com/cygwin-ug-net/using-specialnames.html#pathnames-unusual)
+
+Sun Jun 19 14:31:07 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_pkey.h, ext/openssl/ossl_pkey_dh.c,
+	  ext/openssl/ossl_pkey_dsa.c, ext/openssl/ossl_pkey_rsa.c: A few days
+	  ago, OpenSSL changed {DH,DSA,RSA}_get0_*() to take const BIGNUM **.
+	  https://git.openssl.org/gitweb/?p=openssl.git;a=commit;h=fd809cfdbd6e32b6b67b68c59f6d55fbed7a9327
+	  [ruby-core:75225] [Feature #12324]
+
+Sun Jun 19 11:19:43 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* variable.c (rb_path_to_class): consider the string length
+	  instead of a terminator.
+
+	* variable.c (rb_path_to_class): search the constant at once
+	  instead of checking if defined and then getting it.
+
+Sat Jun 18 14:01:40 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* test/rubygems/test_gem_installer.rb: Fixed broken test with extension
+	  build. https://github.com/rubygems/rubygems/pull/1645
+
+Sat Jun 18 13:59:54 2016  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* lib/rubygems.rb, lib/rubygems/*, test/rubygems/*: Update rubygems
+	  HEAD(2c6d256). It contains to update vendored Molinillo to 0.5.0.
+	  https://github.com/rubygems/rubygems/pull/1638
+
+Sat Jun 18 10:13:37 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* common.mk (build-ext), ext/extmk.rb: use variable EXTENCS
+	  different than ENCOBJS, to get rid of circular dependency.
+	  build libencs when linking encodings statically.
+	  [ruby-core:75618] [Bug #12401]
+
+Sat Jun 18 08:52:46 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/stringio/stringio.c (strio_getline): fix pointer index
+	  overflow.  reported by Guido Vranken <guido AT guidovranken.nl>.
+
+Thu Jun 16 16:35:35 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* class.c (Init_class_hierarchy): prevent rb_cObject which is the
+	  class tree root, from GC.  [ruby-dev:49666] [Bug #12492]
+
+Thu Jun 16 12:17:52 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (tr_trans): adjust buffer size by processed and rest
+	  lengths, instead of doubling repeatedly.
+
+Thu Jun 16 11:15:25 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (tr_trans): consider terminator length and fix heap
+	  overflow.  reported by Guido Vranken <guido AT guidovranken.nl>.
+
+Thu Jun 16 00:02:32 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c (ossl_ocspreq_verify, ossl_ocspbres_verify):
+	  Use ossl_clear_error() so that they don't print warnings to stderr and
+	  leak errors in the OpenSSL error queue. Also, check the return value
+	  of OCSP_*_verify() correctly. They can return -1 on verification
+	  failure.
+
+Wed Jun 15 19:52:23 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c (ossl_ocspreq_sign, ossl_ocspbres_sign): Allow
+	  specifying hash algorithm used in signing. They are hard coded to use
+	  SHA-1.
+	  Based on a patch provided by Tim Shirley <tidoublemy@gmail.com>.
+	  [ruby-core:70915] [Feature #11552] [GH ruby/openssl#28]
+
+	* test/openssl/test_ocsp.rb: Test sign-verify works.
+
+Wed Jun 15 01:46:16 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* numeric.c: [DOC] fix rdoc directive, and an example of negative
+	  value.  [ruby-core:76025] [Bug #12487]
+
+Wed Jun 15 01:44:42 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* tool/mkconfig.rb: provide Unicode Version information as
+	  RbConfig::CONFIG['UNICODE_VERSION'].
+	  [ruby-core:75845] [Feature #12460]
+
+Wed Jun 15 00:01:18 2016  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
+
+	* test/ruby/enc/test_case_comprehensive.rb
+	  (TestComprehensiveCaseFold::read_data): use \A and \z instead of
+	  ^ and $ in regexp.
+
+Tue Jun 14 23:43:00 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/backward.h (rb_cFixnum, rb_cBignum): remove the
+	  backward compatibility macros, to fail incompatible extension
+	  libraries early.  [Bug #12427]
+
+Tue Jun 14 22:22:07 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* strftime.c (rb_strftime_with_timespec): limit the result string
+	  size by the format length, to get rid of unlimited memory use.
+
+Tue Jun 14 22:11:11 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c (ossl_ocspcid_get_issuer_name_hash,
+	  ossl_ocspcid_get_issuer_key_hash, ossl_ocspcid_get_hash_algorithm):
+	  Add accessor methods OCSP::CertificateId#issuer_name_hash,
+	  #issuer_key_hash, #hash_algorithm.
+	  Based on a patch provided by Paul Kehrer <paul.l.kehrer@gmail.com>.
+	  [ruby-core:48062] [Feature #7181]
+
+	* test/openssl/test_ocsp.rb: Test these new methods.
+
+Tue Jun 14 22:07:25 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/date/date_strftime.c (date_strftime_with_tmx): reject too
+	  large precision to get rid of buffer overflow.
+	  reported by Guido Vranken <guido AT guidovranken.nl>.
+
+Tue Jun 14 21:40:42 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_ocsp.c (ossl_ocspbres_to_der, ossl_ocspcid_to_der):
+	  Implement #to_der methods for OCSP::BasicResponse and
+	  OCSP::CertificateId.
+
+	  (ossl_ocspreq_initialize, ossl_ocspres_initialize): Use GetOCSP*()
+	  instead of raw DATA_PTR().
+
+	  (ossl_ocspbres_initialize, ossl_ocspcid_initialize): Allow
+	  initializing from DER string.
+
+	  (Init_ossl_ocsp): Define new #to_der methods.
+
+	* test/openssl/test_ocsp.rb: Test these changes. Also add missing tests
+	  for OCSP::{Response,Request}#to_der.
+
+Tue Jun 14 21:35:00 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/openssl_missing.h (DH_set0_pqg, RSA_set0_key):
+	  DH_set0_pqg() allows 'q' to be NULL. Fix a typo in RSA_set0_key().
+	  Fixes r55285.  [ruby-core:75225] [Feature #12324]
+
+Mon Jun 14 10:19:00 2016  Kenta Murata  <mrkn@mrkn.jp>
+
+	* NEWS: describe Integer#digits.
+
+Mon Jun 13 21:09:40 2016  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* thread.c (debug_deadlock_check): show thread lock dependency and
+	  backtrace [Feature #8214] [ruby-dev:47217]
+
+	* thread.c (thread_status_name): show "sleep_forever" instead of
+	  "sleep" if called from inspect.
+
+Mon Jun 13 20:50:07 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (reg_named_capture_assign_iter): remove named capture
+	  conflict warnings.  it is just annoying rather than useful.
+	  [ruby-core:75416] [Bug #12359]
+
+Mon Jun 13 20:04:00 2016  Kenta Murata  <mrkn@mrkn.jp>
+
+	* numeric.c (rb_int_digits, rb_fix_digits, rb_int_digits_bigbase):
+	  Add Integer#digits to extract columns in place-value notation
+	  [Feature #12447] [ruby-core:75799]
+
+	* test/ruby/test_integer.rb: Add tests for the above change.
+
+	* test/ruby/test_bignum.rb: ditto.
+
+Mon Jun 13 20:34:53 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/ruby.h (RUBY_INTEGER_UNIFICATION): macro to tell if
+	  Integer is integrated.  [ruby-core:75718][Bug #12427]
+
+	* include/ruby/backward.h, internal.h (rb_cFixnum, rb_cBignum):
+	  fallback to rb_cInteger.
+
+	* bignum.c, numeric.c, ext/json/generator/generator.{c,h}: use the
+	  macro.
+
+Mon Jun 13 16:58:53 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_case_comprehensive.rb: Add tests for full Unicode
+	  swapcase.
+
+Sun Jun 12 14:48:00 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/enc/test_case_comprehensive.rb: Add tests for ASCII-only
+	  swapcase; store calculated values in hashes.
+
+Sun Jun 12 14:05:45 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* ext/openssl/ossl_cipher.c (ossl_cipher_get_auth_tag,
+	  ossl_cipher_set_auth_tag): Check if the cipher flags retrieved by
+	  EVP_CIPHER_CTX_flags() includes EVP_CIPH_FLAG_AEAD_CIPHER to see if
+	  the cipher supports AEAD. AES-GCM was the only supported in OpenSSL
+	  1.0.1.
+
+	  (Init_ossl_cipher): Fix doc; OpenSSL::Cipher::AES.new(128, :GCM) can't
+	  work.
+
+	* ext/openssl/openssl_missing.h: Define EVP_CTRL_AEAD_{GET,SET}_TAG if
+	  missing. They are added in OpenSSL 1.1.0, and have the same value as
+	  EVP_CTRL_GCM_{GET,SET}_TAG and EVP_CTRL_CCM_{GET,SET}_TAG.
+
+Sun Jun 12 13:47:42 2016  Kazuki Yamaguchi  <k@rhe.jp>
+
+	* test/openssl/test_engine.rb (test_openssl_engine_builtin,
+	  test_openssl_engine_by_id_string): Skip test if 'openssl' engine is
+	  already loaded. And test the number increased by Engine.load{_by_id,},
+	  not the total count of loaded engines. Previously, we called
+	  OpenSSL::Engine.cleanup every time running a test case, but we no
+	  longer can do it.
+	  [ruby-core:75225] [Feature #12324]
+
+Sun Jun 12 09:24:34 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (append_fspath): normalize directory name to be appended
+	  on OS X.  [ruby-core:75957] [Ruby trunk Bug#12483]
+	  https://github.com/rails/rails/issues/25303#issuecomment-224834804
+
+Sat Jun 11 23:07:32 2016  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/forwardable.rb (_delegator_method): get rid of a warning which
+	  causes test failures introduced at r55376.
+
+Sat Jun 11 18:37:58 2016  Marcus Stollsteimer  <sto.mar@web.de>
+
+	* ext/json/lib/*.rb: Removed some comments. Because these are unnecessary
+	  class description. [ci skip][Bug #12255][ruby-core:74835]
+
+Sat Jun 11 15:19:38 2016  takiy33  <takiy33@users.noreply.github.com>
+
+	* lib/net/smtp.rb: [DOC] Remove dead link on documentation for
+	  Japanese of SMTP.  [Fix GH-1380]
+
+Sat Jun 11 15:02:45 2016  Grant Hutchins  <github@nertzy.com>
+
+	* string.c (rb_str_oct): [DOC] fix typo, hornored -> honored.
+	  [Fix GH-1379]
+
+Sat Jun 11 14:04:19 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/objspace/objspace_dump.c: generate valid JSON for dump_all.
+
+Sat Jun 11 13:52:33 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/forwardable.rb (_delegator_method): remove __send__ call if
+	  possible, so that more optimizations will be enabled.
+
+Sat Jun 11 11:24:36 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* enc/iso_8859.h (SHARP_s): name frequently used codepoint.
+
+Sat Jun 11 09:58:45 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_1.c: Revert to older version of code.
+
+Sat Jun 11 09:46:17 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* enc/iso_8859_1.c: Implement non-ASCII case mapping.
+
+	* test/ruby/enc/test_case_comprehensive.rb: Tests for above.
+
+	* string.c: Add iso-8859-1 to supported encodings.
+
+Sat Jun 11 09:31:28 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/forwardable.rb (_delegator_method): leave the backtrace
+	  untouched during accessor.  forwardable.rb does not appear in
+	  the backtrace during delegated method because of tail-call
+	  optimization.
+
+Sat Jun 11 01:38:31 2016  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* include/ruby/defines.h (GCC_VERSION_SINCE): Fix logic error by
+	  adding parentheses. Fix failures of TestMkmf::TestConvertible
+	  with GCC 3.4.3 on Solaris 10. [Bug #12479] [ruby-dev:49660]
+
+Fri Jun 10 21:54:24 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/forwardable.rb (Forwardable._delegator_method): extract
+	  method generator and deal with non-module objects.
+	  [ruby-dev:49656] [Bug #12478]
+
+Fri Jun 10 17:35:11 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* string.c: Special-case :ascii option in rb_str_capitalize_bang and
+	  rb_str_swapcase_bang.
+
+Fri Jun 10 17:12:24 2016  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* string.c: Special-case :ascii option in rb_str_upcase_bang (retry).
+
+Fri Jun 10 14:48:36 2016  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* hash.c (get_env_cstr): ensure NUL-terminated.
+	  [ruby-dev:49655] [Bug #12475]
+
+	* string.c (rb_str_fill_terminator): return the pointer to the
+	  NUL-terminated content.
+
 Thu Jun  9 21:42:00 2016  Kazuki Yamaguchi  <k@rhe.jp>
 
 	* ext/openssl/ossl_asn1.c (asn1integer_to_num): Use

@@ -1068,7 +1068,7 @@ VALUE
 rb_yield_splat(VALUE values)
 {
     VALUE tmp = rb_check_array_type(values);
-    volatile VALUE v;
+    VALUE v;
     if (NIL_P(tmp)) {
         rb_raise(rb_eArgError, "not an array");
     }
@@ -1298,11 +1298,8 @@ eval_string_with_cref(VALUE self, VALUE src, VALUE scope, rb_cref_t *const cref_
     rb_thread_t *th = GET_THREAD();
     rb_env_t *env = NULL;
     rb_block_t block, *base_block;
-    volatile VALUE file;
-    volatile int line;
-
-    file = filename ? filename : rb_source_location(&lineno);
-    line = lineno;
+    VALUE file = filename ? filename : rb_source_location(&lineno);
+    int line = lineno;
 
     {
 	rb_cref_t *cref = cref_arg;
@@ -1551,32 +1548,23 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
 {
     int state;
     volatile VALUE val = Qnil;		/* OK */
-    volatile int safe = rb_safe_level();
-    rb_thread_t *th = GET_THREAD();
+    const int VAR_NOCLOBBERED(safe) = rb_safe_level();
+    rb_thread_t *const VAR_NOCLOBBERED(th) = GET_THREAD();
 
     if (OBJ_TAINTED(cmd)) {
 	level = RUBY_SAFE_LEVEL_MAX;
     }
 
-    if (!RB_TYPE_P(cmd, T_STRING)) {
-	TH_PUSH_TAG(th);
-	rb_set_safe_level_force(level);
-	if ((state = TH_EXEC_TAG()) == 0) {
+    TH_PUSH_TAG(th);
+    rb_set_safe_level_force(level);
+    if ((state = TH_EXEC_TAG()) == 0) {
+	if (!RB_TYPE_P(cmd, T_STRING)) {
 	    val = rb_funcall2(cmd, idCall, RARRAY_LENINT(arg),
 			      RARRAY_CONST_PTR(arg));
 	}
-	TH_POP_TAG();
-
-	rb_set_safe_level_force(safe);
-
-	if (state)
-	    TH_JUMP_TAG(th, state);
-	return val;
-    }
-
-    TH_PUSH_TAG(th);
-    if ((state = TH_EXEC_TAG()) == 0) {
-	val = eval_string(rb_vm_top_self(), cmd, Qnil, 0, 0);
+	else {
+	    val = eval_string(rb_vm_top_self(), cmd, Qnil, 0, 0);
+	}
     }
     TH_POP_TAG();
 
@@ -1588,7 +1576,7 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
 /* block eval under the class/module context */
 
 static VALUE
-yield_under(VALUE under, VALUE self, VALUE values)
+yield_under(VALUE under, VALUE self, int argc, const VALUE *argv)
 {
     rb_thread_t *th = GET_THREAD();
     rb_block_t block, *blockptr;
@@ -1601,12 +1589,7 @@ yield_under(VALUE under, VALUE self, VALUE values)
     }
     cref = vm_cref_push(th, under, blockptr, TRUE);
 
-    if (values == Qundef) {
-	return vm_yield_with_cref(th, 1, &self, cref);
-    }
-    else {
-	return vm_yield_with_cref(th, RARRAY_LENINT(values), RARRAY_CONST_PTR(values), cref);
-    }
+    return vm_yield_with_cref(th, argc, argv, cref);
 }
 
 VALUE
@@ -1641,7 +1624,7 @@ specific_eval(int argc, const VALUE *argv, VALUE klass, VALUE self)
 {
     if (rb_block_given_p()) {
 	rb_check_arity(argc, 0, 0);
-	return yield_under(klass, self, Qundef);
+	return yield_under(klass, self, 1, &self);
     }
     else {
 	VALUE file = Qundef;
@@ -1737,7 +1720,7 @@ VALUE
 rb_obj_instance_exec(int argc, const VALUE *argv, VALUE self)
 {
     VALUE klass = singleton_class_for_eval(self);
-    return yield_under(klass, self, rb_ary_new4(argc, argv));
+    return yield_under(klass, self, argc, argv);
 }
 
 /*
@@ -1798,7 +1781,7 @@ rb_mod_module_eval(int argc, const VALUE *argv, VALUE mod)
 VALUE
 rb_mod_module_exec(int argc, const VALUE *argv, VALUE mod)
 {
-    return yield_under(mod, mod, rb_ary_new4(argc, argv));
+    return yield_under(mod, mod, argc, argv);
 }
 
 /*

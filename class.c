@@ -547,6 +547,7 @@ Init_class_hierarchy(void)
 {
     rb_cBasicObject = boot_defclass("BasicObject", 0);
     rb_cObject = boot_defclass("Object", rb_cBasicObject);
+    rb_gc_register_mark_object(rb_cObject);
 
     /* resolve class name ASAP for order-independence */
     rb_class_name(rb_cObject);
@@ -854,11 +855,7 @@ rb_include_module(VALUE klass, VALUE module)
     int changed = 0;
 
     rb_frozen_class_p(klass);
-
-    if (!RB_TYPE_P(module, T_MODULE)) {
-	Check_Type(module, T_MODULE);
-    }
-
+    Check_Type(module, T_MODULE);
     OBJ_INFECT(klass, module);
 
     changed = include_modules_at(klass, RCLASS_ORIGIN(klass), module, TRUE);
@@ -970,9 +967,7 @@ rb_prepend_module(VALUE klass, VALUE module)
     int changed = 0;
 
     rb_frozen_class_p(klass);
-
     Check_Type(module, T_MODULE);
-
     OBJ_INFECT(klass, module);
 
     origin = RCLASS_ORIGIN(klass);

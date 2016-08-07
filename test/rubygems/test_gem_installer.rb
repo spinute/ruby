@@ -1106,6 +1106,125 @@ gem 'other', version
     assert_path_exists expected_makefile
   end
 
+  def test_install_extension_dir_is_removed_on_reinstall
+    @spec.extensions << "extconf.rb"
+    write_file File.join(@tempdir, "extconf.rb") do |io|
+      io.write <<-RUBY
+        require "mkmf"
+        create_makefile("#{@spec.name}")
+      RUBY
+    end
+
+    @spec.files += %w[extconf.rb]
+
+    path = Gem::Package.build @spec
+
+    # Install a gem with an extension
+    use_ui @ui do
+      installer = Gem::Installer.at path
+      installer.install
+    end
+
+    # pretend that a binary file was created as part of the build
+    should_be_removed = File.join(@spec.extension_dir, "#{@spec.name}.so")
+    write_file should_be_removed do |io|
+      io.write "DELETE ME ON REINSTALL"
+    end
+    assert_path_exists should_be_removed
+
+    # reinstall the gem, this is also the same as pristine
+    use_ui @ui do
+      installer = Gem::Installer.at path
+      installer.install
+    end
+
+    refute_path_exists should_be_removed
+  end
+
+  # ruby core repository needs to `depend` file for extension build.
+  # but 1.9.2 and earlier mkmf.rb does not create TOUCH file like depend.
+  if RUBY_VERSION < '1.9.3'
+    def test_find_lib_file_after_install
+
+      @spec.extensions << "extconf.rb"
+      write_file File.join(@tempdir, "extconf.rb") do |io|
+        io.write <<-RUBY
+          require "mkmf"
+          create_makefile("#{@spec.name}")
+        RUBY
+      end
+
+      write_file File.join(@tempdir, "a.c") do |io|
+        io.write <<-C
+          #include <ruby.h>
+          void Init_a() { }
+        C
+      end
+
+      Dir.mkdir File.join(@tempdir, "lib")
+      write_file File.join(@tempdir, 'lib', "b.rb") do |io|
+        io.write "# b.rb"
+      end
+
+      @spec.files += %w[extconf.rb lib/b.rb a.c]
+
+      use_ui @ui do
+        path = Gem::Package.build @spec
+
+        installer = Gem::Installer.at path
+        installer.install
+      end
+
+      expected = File.join @spec.full_require_paths.find { |path|
+        File.exist? File.join path, 'b.rb'
+      }, 'b.rb'
+      assert_equal expected, @spec.matches_for_glob('b.rb').first
+    end
+  else
+    def test_find_lib_file_after_install
+      @spec.extensions << "extconf.rb"
+      write_file File.join(@tempdir, "extconf.rb") do |io|
+        io.write <<-RUBY
+          require "mkmf"
+
+          CONFIG['CC'] = '$(TOUCH) $@ ||'
+          CONFIG['LDSHARED'] = '$(TOUCH) $@ ||'
+          $ruby = '#{Gem.ruby}'
+
+          create_makefile("#{@spec.name}")
+        RUBY
+      end
+
+      write_file File.join(@tempdir, "depend")
+
+      write_file File.join(@tempdir, "a.c") do |io|
+        io.write <<-C
+          #include <ruby.h>
+          void Init_a() { }
+        C
+      end
+
+      Dir.mkdir File.join(@tempdir, "lib")
+      write_file File.join(@tempdir, 'lib', "b.rb") do |io|
+        io.write "# b.rb"
+      end
+
+      @spec.files += %w[extconf.rb lib/b.rb depend a.c]
+
+      use_ui @ui do
+        path = Gem::Package.build @spec
+
+        installer = Gem::Installer.at path
+        installer.install
+      end
+
+      expected = File.join @spec.full_require_paths.find { |path|
+        File.exist? File.join path, 'b.rb'
+      }, 'b.rb'
+      assert_equal expected, @spec.matches_for_glob('b.rb').first
+    end
+  end
+
   def test_install_extension_and_script
     @spec.extensions << "extconf.rb"
     write_file File.join(@tempdir, "extconf.rb") do |io|

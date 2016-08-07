@@ -417,7 +417,7 @@ toregexp
     rb_num_t i;
     const VALUE ary = rb_ary_tmp_new(cnt);
     for (i = 0; i < cnt; i++) {
-        rb_ary_store(ary, cnt-i-1, TOPN(i));
+	rb_ary_store(ary, cnt-i-1, TOPN(i));
     }
     POPN(cnt);
     val = rb_reg_new_ary(ary, (int)opt);
@@ -809,24 +809,24 @@ trace
     rb_event_flag_t flag = (rb_event_flag_t)nf;
 
     if (RUBY_DTRACE_METHOD_ENTRY_ENABLED() ||
-        RUBY_DTRACE_METHOD_RETURN_ENABLED() ||
-        RUBY_DTRACE_CMETHOD_ENTRY_ENABLED() ||
-        RUBY_DTRACE_CMETHOD_RETURN_ENABLED()) {
+	RUBY_DTRACE_METHOD_RETURN_ENABLED() ||
+	RUBY_DTRACE_CMETHOD_ENTRY_ENABLED() ||
+	RUBY_DTRACE_CMETHOD_RETURN_ENABLED()) {
 
-        switch (flag) {
-          case RUBY_EVENT_CALL:
-            RUBY_DTRACE_METHOD_ENTRY_HOOK(th, 0, 0);
-            break;
-          case RUBY_EVENT_C_CALL:
-            RUBY_DTRACE_CMETHOD_ENTRY_HOOK(th, 0, 0);
-            break;
-          case RUBY_EVENT_RETURN:
-            RUBY_DTRACE_METHOD_RETURN_HOOK(th, 0, 0);
-            break;
-          case RUBY_EVENT_C_RETURN:
-            RUBY_DTRACE_CMETHOD_RETURN_HOOK(th, 0, 0);
-            break;
-        }
+	switch (flag) {
+	  case RUBY_EVENT_CALL:
+	    RUBY_DTRACE_METHOD_ENTRY_HOOK(th, 0, 0);
+	    break;
+	  case RUBY_EVENT_C_CALL:
+	    RUBY_DTRACE_CMETHOD_ENTRY_HOOK(th, 0, 0);
+	    break;
+	  case RUBY_EVENT_RETURN:
+	    RUBY_DTRACE_METHOD_RETURN_HOOK(th, 0, 0);
+	    break;
+	  case RUBY_EVENT_C_RETURN:
+	    RUBY_DTRACE_CMETHOD_RETURN_HOOK(th, 0, 0);
+	    break;
+	}
     }
 
     EXEC_EVENT_HOOK(th, flag, GET_SELF(), 0, 0 /* id and klass are resolved at callee */,
@@ -1381,18 +1381,13 @@ opt_plus
 	BASIC_OP_UNREDEFINED_P(BOP_PLUS,INTEGER_REDEFINED_OP_FLAG)) {
 	/* fixnum + fixnum */
 #ifndef LONG_LONG_VALUE
-	val = (recv + (obj & (~1)));
-	if ((~(recv ^ obj) & (recv ^ val)) &
-	    ((VALUE)0x01 << ((sizeof(VALUE) * CHAR_BIT) - 1))) {
-	    val = rb_big_plus(rb_int2big(FIX2LONG(recv)),
-			      rb_int2big(FIX2LONG(obj)));
+	VALUE msb = (VALUE)1 << ((sizeof(VALUE) * CHAR_BIT) - 1);
+	val = recv - 1 + obj;
+	if ((~(recv ^ obj) & (recv ^ val)) & msb) {
+	    val = rb_int2big((SIGNED_VALUE)((val>>1) | (recv & msb)));
 	}
 #else
-	long a, b, c;
-	a = FIX2LONG(recv);
-	b = FIX2LONG(obj);
-	c = a + b;
-	val = LONG2NUM(c);
+	val = LONG2NUM(FIX2LONG(recv) + FIX2LONG(obj));
 #endif
     }
     else if (FLONUM_2_P(recv, obj) &&
@@ -2046,12 +2041,12 @@ opt_succ
     if (SPECIAL_CONST_P(recv)) {
 	if (FIXNUM_P(recv) &&
 	    BASIC_OP_UNREDEFINED_P(BOP_SUCC, INTEGER_REDEFINED_OP_FLAG)) {
-	    const VALUE obj = INT2FIX(1);
 	    /* fixnum + INT2FIX(1) */
-	    val = (recv + (obj & (~1)));
-	    if ((~(recv ^ obj) & (recv ^ val)) & ((unsigned long)LONG_MAX + 1)) {
-		val = rb_big_plus(rb_int2big(FIX2LONG(recv)),
-				  rb_int2big(FIX2LONG(obj)));
+	    if (recv != LONG2FIX(FIXNUM_MAX)) {
+		val = recv - 1 + INT2FIX(1);
+	    }
+	    else {
+		val = LONG2NUM(FIXNUM_MAX + 1);
 	    }
 	}
 	else {

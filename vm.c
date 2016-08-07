@@ -379,7 +379,7 @@ vm_set_main_stack(rb_thread_t *th, const rb_iseq_t *iseq)
     vm_set_eval_stack(th, iseq, 0, &env->block);
 
     /* save binding */
-    if (bind && iseq->body->local_size > 0) {
+    if (iseq->body->local_size > 0) {
 	bind->env = vm_make_env_object(th, th->cfp);
     }
 }
@@ -924,14 +924,11 @@ invoke_block(rb_thread_t *th, const rb_iseq_t *iseq, VALUE self, const rb_block_
 }
 
 static VALUE
-invoke_bmethod(rb_thread_t *th, const rb_iseq_t *iseq, VALUE self, const rb_block_t *block, int type, int opt_pc)
+invoke_bmethod(rb_thread_t *th, const rb_iseq_t *iseq, VALUE self, const rb_block_t *block, const rb_callable_method_entry_t *me, int type, int opt_pc)
 {
     /* bmethod */
     int arg_size = iseq->body->param.size;
-    const rb_callable_method_entry_t *me = th->passed_bmethod_me;
     VALUE ret;
-
-    th->passed_bmethod_me = NULL;
 
     vm_push_frame(th, iseq, type | VM_FRAME_FLAG_FINISH | VM_FRAME_FLAG_BMETHOD, self,
 		  VM_ENVVAL_PREV_EP_PTR(block->ep),
@@ -961,6 +958,9 @@ invoke_block_from_c_0(rb_thread_t *th, const rb_block_t *block,
 	int i, opt_pc;
 	int type = block_proc_is_lambda(block->proc) ? VM_FRAME_MAGIC_LAMBDA : VM_FRAME_MAGIC_BLOCK;
 	VALUE *sp = th->cfp->sp;
+	const rb_callable_method_entry_t *me = th->passed_bmethod_me;
+
+	th->passed_bmethod_me = NULL;
 
 	for (i=0; i<argc; i++) {
 	    sp[i] = argv[i];
@@ -969,11 +969,11 @@ invoke_block_from_c_0(rb_thread_t *th, const rb_block_t *block,
 	opt_pc = vm_yield_setup_args(th, iseq, argc, sp, blockptr,
 				     (type == VM_FRAME_MAGIC_LAMBDA ? (splattable ? arg_setup_lambda : arg_setup_method) : arg_setup_block));
 
-	if (th->passed_bmethod_me == NULL) {
+	if (me == NULL) {
 	    return invoke_block(th, iseq, self, block, cref, type, opt_pc);
 	}
 	else {
-	    return invoke_bmethod(th, iseq, self, block, type, opt_pc);
+	    return invoke_bmethod(th, iseq, self, block, me, type, opt_pc);
 	}
 
     }
@@ -2583,7 +2583,7 @@ m_core_hash_merge_ptr(int argc, VALUE *argv, VALUE recv)
 static int
 kwmerge_i(VALUE key, VALUE value, VALUE hash)
 {
-    if (!SYMBOL_P(key)) Check_Type(key, T_SYMBOL);
+    Check_Type(key, T_SYMBOL);
     rb_hash_aset(hash, key, value);
     return ST_CONTINUE;
 }
@@ -2591,7 +2591,7 @@ kwmerge_i(VALUE key, VALUE value, VALUE hash)
 static int
 kwcheck_i(VALUE key, VALUE value, VALUE hash)
 {
-    if (!SYMBOL_P(key)) Check_Type(key, T_SYMBOL);
+    Check_Type(key, T_SYMBOL);
     return ST_CONTINUE;
 }
 

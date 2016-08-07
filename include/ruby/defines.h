@@ -63,8 +63,8 @@ extern "C" {
   (defined(__GNUC__) && !defined(__INTEL_COMPILER) && !defined(__clang__) && \
    ((__GNUC__ > (major)) ||  \
     ((__GNUC__ == (major) && \
-      (__GNUC_MINOR__ > (minor)) || \
-      (__GNUC_MINOR__ == (minor) && __GNUC_PATCHLEVEL__ >= (patchlevel))))))
+      ((__GNUC_MINOR__ > (minor)) ||					\
+       (__GNUC_MINOR__ == (minor) && __GNUC_PATCHLEVEL__ >= (patchlevel)))))))
 #endif
 
 /* likely */
@@ -130,7 +130,7 @@ extern "C" {
 # include <sys/select.h>
 #endif
 
-#if defined HAVE_SETJMPEX_H && defined HAVE__SETJMPEX
+#ifdef RUBY_USE_SETJMPEX
 #include <setjmpex.h>
 #endif
 

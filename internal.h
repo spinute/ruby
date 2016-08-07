@@ -780,6 +780,11 @@ struct MEMO {
 
 #define STRING_P(s) (RB_TYPE_P((s), T_STRING) && CLASS_OF(s) == rb_cString)
 
+#ifdef RUBY_INTEGER_UNIFICATION
+# define rb_cFixnum rb_cInteger
+# define rb_cBignum rb_cInteger
+#endif
+
 enum {
     cmp_opt_Fixnum,
     cmp_opt_String,
@@ -896,8 +901,10 @@ CONSTFUNC(const char * rb_insns_name(int i));
 VALUE rb_insns_name_array(void);
 
 /* complex.c */
-VALUE rb_nucomp_add(VALUE, VALUE);
-VALUE rb_nucomp_mul(VALUE, VALUE);
+VALUE rb_complex_plus(VALUE, VALUE);
+VALUE rb_complex_mul(VALUE, VALUE);
+VALUE rb_complex_abs(VALUE x);
+VALUE rb_complex_sqrt(VALUE x);
 
 /* cont.c */
 VALUE rb_obj_is_fiber(VALUE);
@@ -1042,6 +1049,7 @@ st_table *rb_init_identtable_with_size(st_index_t size);
 VALUE rb_hash_keys(VALUE hash);
 VALUE rb_hash_values(VALUE hash);
 VALUE rb_hash_rehash(VALUE hash);
+int rb_hash_add_new_element(VALUE hash, VALUE key, VALUE val);
 #define HASH_DELETED  FL_USER1
 #define HASH_PROC_DEFAULT FL_USER2
 
@@ -1078,9 +1086,7 @@ VALUE rb_math_hypot(VALUE, VALUE);
 VALUE rb_math_log(int argc, const VALUE *argv);
 VALUE rb_math_sin(VALUE);
 VALUE rb_math_sinh(VALUE);
-#if 0
 VALUE rb_math_sqrt(VALUE);
-#endif
 
 /* newline.c */
 void Init_newline(void);
@@ -1350,7 +1356,8 @@ VALUE rb_str_quote_unprintable(VALUE);
 VALUE rb_id_quote_unprintable(ID);
 #define QUOTE(str) rb_str_quote_unprintable(str)
 #define QUOTE_ID(id) rb_id_quote_unprintable(id)
-void rb_str_fill_terminator(VALUE str, const int termlen);
+char *rb_str_fill_terminator(VALUE str, const int termlen);
+void rb_str_change_terminator_length(VALUE str, const int oldtermlen, const int termlen);
 VALUE rb_str_locktmp_ensure(VALUE str, VALUE (*func)(VALUE), VALUE arg);
 #ifdef RUBY_ENCODING_H
 VALUE rb_external_str_with_enc(VALUE str, rb_encoding *eenc);
@@ -1533,6 +1540,12 @@ VALUE rb_str2big_gmp(VALUE arg, int base, int badcheck);
 
 /* error.c (export) */
 int rb_bug_reporter_add(void (*func)(FILE *, void *), void *data);
+NORETURN(void rb_unexpected_type(VALUE,int));
+#undef Check_Type
+#define Check_Type(v, t) \
+    (!RB_TYPE_P((VALUE)(v), (t)) || \
+     ((t) == RUBY_T_DATA && RTYPEDDATA_P(v)) ? \
+     rb_unexpected_type((VALUE)(v), (t)) : (void)0)
 
 /* file.c (export) */
 #ifdef HAVE_READLINK
