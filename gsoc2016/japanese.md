@@ -1,43 +1,29 @@
 ---
-title: Main
+title: 成果報告
 layout: page
-parmalink: /main/
+parmalink: /gsoc2016/japanese/
 ---
 
-# GSoC2016 spinute
-このページはGoogle Summer of Code(GSoC)2016に採択された提案automatic data structure selection mechanism in Ruby interpreterの成果報告ページです。
+[English Page](/gsoc2016/english/)
 
-## What I did
-* Implement Ruby Rope C extension and experimental automatic selection class
-  * https://github.com/spinute/CRope (whole repository is for this project)
-* Implement Rope into Ruby-Core and its automatic selection for String class
-  * https://github.com/spinute/Ruby
-  * implement-ropestring branch is for this project
-* Implement patch for Ruby core which enables multi-argument "prepend", concatenation and deletion of array and string
-  * https://bugs.ruby-lang.org/issues/12333 (3 patches are posted)
-* Merge well-tuned open-address hashtable into  Ruby core (in progress)
+このページはGoogle Summer of Code(GSoC)2016に採択された提案[Automatic-selection mechanism for data structures in MRI](https://summerofcode.withgoogle.com/projects/#4576418910437376)の成果報告ページです。
 
+## 謝辞
+
+このプロジェクトでメンターを務めていただいたメンターの笹田さんには4ヶ月近くに渡り連絡を取り合いながら、Rubyの内部実装からデバッグまでご協力いただき大変お世話になりました。Rubyに関するネタの引き出しはさすがに広く深く、短い期間のプロジェクトの中で実際に手を付けられたのはわずかな範囲でしたが、関連する面白いお話をたくさん聞くことができ楽しかったです。
+また、Google Summer of Codeの実行に携わるみなさまも、僕を含む多くの学生に貴重な場を提供していただけたこと、感謝しています。
+
+## 成果物
 * C言語で実装されたRope拡張ライブラリの実装
-  * https://github.com/spinute/CRope (whole repository is for this project)
-* MRIの文字列のRopeを使った内部表現の実装
-  * https://github.com/spinute/Ruby
+  * <https://github.com/spinute/CRope> (whole repository is for this project)
+* Rubyの文字列のRopeを使った内部表現の実装
+  * <https://github.com/spinute/Ruby>
   * implement-ropestringブランチがこの作業ブランチです
-* RubyのArray, Stringクラスのprepend, concat, deleteを多引数化するパッチ
-  * https://bugs.ruby-lang.org/issues/12333 にて議論を行い、考えられる幾つかの実装パッチを投稿しています
-* MRI内部で使われているハッシュテーブルの性能改善パッチのマージ(作業途中)
+* RubyのArray, Stringクラスのprepend, concatを多引数化するパッチ
+  * <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
+* Ruby内部で使われているハッシュテーブルの性能改善パッチのマージ(作業途中)
 
-## Introduction
-Note: In this page, I wrote Ruby as MRI(Matz Ruby Interpreter). There are several implementation rather than MRI, e.g. JRuby(in Java), Rubynius(in C++ and Ruby itself) ...etc.
-
-Naive implementation of string object in programming language is a sequential buffer such as array in C language, and Ruby has also adopted such a structure for string.
-Rope is another data structure for string object, which expresses given string in tree structure.
-Rope surpass array-expression in some basic operation especially in the meaning of time complexity, e.g. concatenation, deletion and substring.
-My main challenge in Google Summer of Code 2016 (GSoC2016) is to introduce Rope into Ruby and enable users to enjoy its efficiency without awareness.
-
-In some languages which put their emphasis on efficiency, explicit data structure are required for writing a efficient program.
-However, it is not the way Ruby selected.
-Ruby user tend to use a few data structure prepared in language and they do not want to dive into the depth of selecting proper data structure for efficiency.
-In this way, Ruby provide users with joy of programming and productivity, and I wanted to contribute that virtue by offering automatic data structure selection mechanism which enables users to use efficient data structure transparently.
+## はじめに
 
 このページでは、RubyというとRuby処理系のうちのひとつであるMRI(Matz Ruby Interpreter)のことを指します。他の有名な処理系実装の例としては、Javaによる実装であるJRubyや、C++によりVMを実装しその他の大部分をRubyによって実装しているRubiniusなどがあり、MRIと共通する部分も多いかと思うのですが、必ずしもそうではないことにはご注意ください。
 
@@ -51,8 +37,10 @@ Rubyのユーザーは多くの場合、Stack/Queue/Listなどのデータ構造
 一方で、用途に応じて真に効率的なデータ構造が異なり、それらを適切に使い分けることでより効率的な処理が行えることも事実です。
 このプロジェクトでは、ユーザーには意識させることなく、処理系の内部でデータ構造を動的に切り替えることで、Rubyのユーザーにデータ構造の詳細を選択させない高レベルな設計とデータ操作の効率性とを両立することを目指しました。
 
-## Background
+## 背景
 最終的な成果の中心としては文字列の実装として既存の配列ベースのものとは別に、Ropeと呼ばれる木構造による表現を実装し、木構造が有利な処理が文字列に適用される際には文字列の内部表現を自動的にRopeに切り替える、という処理を導入しました。
+ArrayクラスまたはStringクラスにおいて実装を行う可能性があったのですが、配列ベースの実装を木構造あるいはリスト構造で表現すると、結合や削除を高速化できることがわかっており、配列よりも文字列の方が結合処理を多数繰り返す現実的な処理が多いのではないかと思い、Stringクラスにおいて実装することを選択しました。
+このプロジェクトではStringクラスに木構造の内部表現を導入したのですが、リストやGapBufferなどの他の内部表現を同様に導入することや、Arrayクラスにおいて同様のことを行うことも可能だと思います。
 
 目に見える効果として、ひとつRubyの既存の実装の問題点を例に挙げ説明をします。
 
@@ -86,9 +74,13 @@ C言語などのより低レベルな言語ではユーザーはデータ構造�
 このプロジェクトでは、Rubyのこのような特徴を尊重しながら、ユーザーに効率的なデータ処理を提供することを目指しました。
 
 ## C言語で実装されたRope拡張ライブラリ
-これはRopeにおける文字列の処理を高速化することを確認するためのプロトタイプとして行いました。
+
+はじめに、Ropeが文字列における一部の処理を高速化することを確認するため、拡張ライブラリとしてRopeを実装しました。
+
+TODO: ちゃんと書く
 具体的には、Ropeでは文字列の結合、削除、
-一方で、添字を指定しての文字の取得は木をトラバースする必要が有るため、O(logn)程度の時間がかかります。
+
+一方で、添字を指定しての文字の取得は木をトラバースする必要が有るため、O(log n)程度の時間がかかります。
 また、Rubyオブジェクトとしては木構造の全てのノードがそれぞれRubyのオブジェクトとなるため、Rubyのオブジェクトをノード数だけ生成するオーバーヘッドがあります。
 
 既存のRopeの実装はRubyレベルでのものはあったものの、今回の実装はCレベルで行い、拡張ライブラリとしてRuby処理系に組み込みました。
@@ -96,32 +88,22 @@ C言語などのより低レベルな言語ではユーザーはデータ構造�
 参照カウントGCを自力で行う選択をしたことにより、文字列の結合や削除を行う際に木の内部の全てのノードの参照カウントを増減する必要が出てしまい、計算量的には結合O(n)、削除O(n)となってしまっている点は改善点です。
 しかしながら、参照カウントの操作を行わないようにすると(実際にはメモリリークしているものの)理論通りの性能が出ることが確認でき、Ruby処理系に組み込む際にはRubyのGCを使いこの問題は解決されるため、ここではこの問題は放置することにしました。
 
-At first, I implemented Rope as an extension written in C.
-The purpose of this implementation is prototyping; I was novice to Ruby internal before the project, so I divided complexities in the implementation of Rope string and modifying the behavior of Ruby.
-I implemented Rope by not using Garbage Collector in Ruby core but using reference count prepared by myself, for simplicity.
-However, reference counting traverses all the nodes in a tree when calling concat or delete methods, and hence these methods become slower than that of ideal time complexity of Rope data structure.
-The purpose of prototyping is ensuring the possibility of the project, and I was possible to evaluate performance of the ideal implementation of Rope by turning off the reference counting, which means this extension include memory leak for accomplishing ideal performance, and it is the reason why I did not provide its extension as RubyGem (Package Management System for Ruby Language).
-I decided to leave this problem because I tried to implement Rope string into Ruby interpreter itself and then the problem is automatically vanished by using Garbage Collector in Ruby.
 
 ## issue12333を実装したパッチの投稿
 GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、Rubyソースコード完全解説(http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
 また、オンラインにある開発者向けドキュメントとして、[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通していました。
 
 その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものを選定し、仕様を議論しながら実装を何種類か投稿しました。
-これがオープンソースプログラムへの初めてのコミットとなります。(まだパッチはマージしていませんが、7月のRuby開発者会議の際に開発者のみなさまにフィードバックを頂きまして、まつもとさんに機能としてはまああっていいんじゃないかという肯定的なお返事を頂きまして、現在修正パッチを投稿しています。)
+7月のRuby開発者会議の際に開発者のみなさまにフィードバックを頂きまして、まつもとさんに機能としてはまああっていいんじゃないかという肯定的なお返事を頂き、修正パッチを投稿しました。
 
-During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/) and ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/) at first.
-After that I selected an issue posted in (Bug Tracker System of Ruby)[https://bugs.ruby-lang.org/issues] at the perspective of having relation with the topic in this project and not going too complicated.
-I selected this issue [\"String#concat, Array#concat, String#prepend to take multiple arguments\"](https://bugs.ruby-lang.org/issues/12333) as my first activity diving into Ruby internal , and implemented a feature that enable methods such as concat, prepend and delete in Array and String to have have multiple arguments.
-I discussed some details and possible implementation on the page, and posted 3 patches.
-I also reported this implementation in a developer's meeting on July, and got some feedbacks about implementation from Ruby committers and positive response for this feature from Matz.
+
 
 ## Ruby文字列実装のRope対応
-Rubyの文字列実装は基本的にstring.cという10000行程度のひとつのファイルに含まれています。
-内部的には
-しかしながら、GCのふるまいや、Copy on Write、エンコーディングの対応など、理解の浅かった部分があり、かなり手間取りました。
-この過程では現在のruby開発の中心であり、Rubyの内部実装に非常に詳しいメンター笹田さんから多くのアドバイスを頂きました。
-当初の目標では、Ruby処理系におけるデータ構造の自動動的選択というより広いスコープで問題を定義していました。
+今回のプロジェクトの中心となる成果として、Ruby処理系における組み込みStringクラスを修正し、文字列の内部的な表現としてRopeを使うものを実装しました。
+String#concatが呼ばれると文字列オブジェクトはRope表現になります。
+また、配列形式の文字列が必要となる時点で、Rope表現の文字列は配列表現の文字列に変換されます。
+
+ひとつ記録のために書いておくおくと、企画書の時点では、広いスコープで問題を定義していました。
 データをどのような形式で保持するかによってそのデータの集合に対しての操作がどの程度の時間で行うことができるかが変わってきます。
 例としては、単純なデータの列を保持する際に、配列としてそれを保持するのか、リストによって保持するのかによって、前者ではランダムアクセスが定数時間で行うことができるのに対して、後者では列の中間付近への新たなデータの挿入や削除に優位性があります。
 Rubyでのこれまでの選択は、配列を使い、リストは提供しない、というものでした。これはユーザーから見ての簡単さという意味では優れていますが、パフォーマンスクリティカルなコードを書く際には問題となることもあるだろう、という見込みでした。
@@ -139,13 +121,20 @@ Rubyでのこれまでの選択は、配列を使い、リストは提供しな�
 ここで、concatメソッドのような、入力から出力のサイズが決定的/効率的にわかるようなメソッドについてはRope, List, 配列によるメソッドの実装の実行コストを実行前に比較することができます。
 メソッドの実行列が与えられたとき、どの表現におけるメソッドの処理が最も効率的であるかは、動的計画法によって効率的に計算できる、というのが当初の目論見でした。
 
-しかしながら、このアイデアはRubyにおける命令の列を先読みするような方法が現状ないということでもう少し簡明な方法を取ることにしました。
+しかしながら、このアイデアはRubyにおける命令の列を先読みするような方法が現状ないということで、もう少し簡明な方法を取ることにしました。
 先の手法では命令を先読みし、命令列に対しての適切な文字列表現の遷移を計算するというものでしたが、簡明版では先読みはせず、逐次の命令列に対してある表現が優位なことがわかっているメソッドが実行される際には表現を変換してから操作を実行します。
 
-具体的には、文字列の結合が挙げられます。
-Rubyの+演算子によって文字列の結合を行う際、
+具体的にはRubyの+演算子によって文字列の結合を行う際に、結合ノードを作り、結合ノードは内部データとして長さ、右/左の子ノードのポインタ、を持つようにしました。
+また、Ropeであることを示すフラグを立てて、内部ノードを表現しました。
+葉ノードは既存の文字列オブジェクトを使っていますが、Ropeはimmutableなデータ構造なので、葉が変更される可能性のあるオブジェクトであるときにはimmutable化するようにしています。
 
-他にも、
+このようにして作られた木構造から、文字列を実際に取り出す際に、文字列の必要な部分を実際に取り出します。
+これは既存の文字列バッファを取り出す操作の中にRopeならば木をトラバースし文字列を実際に作る、という処理を挟み込むことで実現しています。
+大きな文字列を作成し、実際にはその文字列の一部しか利用しない、というようなケースでは、Ropeは遅延して実際の文字列を作成するため、必要な部分だけを作成する優位性がありますが、現状では先頭を大文字にする()と、や中間文字列を抜き出す(String#substr)についてのみ実装を書き換えています。他にもこのようなメソッドはいくつかあると思うので、それらのメソッドの実装を一通り行うことはやり残されたタスクです。
 
-コミットへのリンク
-やりのこし
+TODO: 実験結果の掲載とその評価
+
+## Rubyの内部で使用されているHashtableの実装の改良issueのマージ対応
+TODO: 概要
+
+TODO: 実験結果の掲載とその評価
