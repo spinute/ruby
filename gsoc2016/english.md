@@ -4,7 +4,7 @@ layout: page
 parmalink: /gsoc2016/english/
 ---
 
-[日本語のページ](/gsoc2016/japanese/)
+[日本語のページ]({{site.url}}/gsoc2016/japanese/)
 
 This page is a report of my project in Google Summer of Code(GSoC)2016.
 [Automatic-selection mechanism for data structures in MRI](https://summerofcode.withgoogle.com/projects/#4576418910437376)
