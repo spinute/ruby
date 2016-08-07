@@ -60,6 +60,8 @@ This design is easy to use and provides users with concentration on their high l
 The goal of this project is to develop a mechanism which uses multiple data structures internally and switches them dynamically, and, on the other hand, which looks just a normal object for users.
 
 During a life of an object
+TODO: write content
+TODO: add evaluations
 
 ## Post patches for issue#12333
 During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/) and ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/).
@@ -67,5 +69,3 @@ After that I selected an issue posted in [Bug Tracker System of Ruby](https://bu
 I selected this issue [\"String#concat, Array#concat, String#prepend to take multiple arguments\"](https://bugs.ruby-lang.org/issues/12333) as my first activity diving into Ruby internal , and implemented a feature that enables methods such as concat and prepend in Array and String to have multiple arguments.
 I discussed some details and possible implementations in the page, and posted 3 patches.
 I also reported this implementation in a developer's meeting in July, and received some feedbacks about implementation from Ruby committers and a positive response for this feature from Matz.
-
-
