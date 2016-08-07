@@ -1,7 +1,7 @@
 ---
 title: 成果報告
 layout: page
-parmalink: /gsoc2016/japanese/
+parmalink: /japanese/
 ---
 
 [English Page]({{site.url}}/gsoc2016/english)
