@@ -4,7 +4,7 @@ layout: page
 parmalink: /japanese/
 ---
 
-[English Page]({{site.url}}/gsoc2016/english)
+[English Page]({{site.url}}{{site.baseurl}}/gsoc2016/english)
 
 このページはGoogle Summer of Code(GSoC)2016に採択された提案[Automatic-selection mechanism for data structures in MRI](https://summerofcode.withgoogle.com/projects/#4576418910437376)の成果報告ページです。
 
