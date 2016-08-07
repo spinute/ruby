@@ -4,8 +4,8 @@
 # Site settings
 title: GSoC 2016, spinute
 email: spinutids(at)(gmail)
-baseurl: ""
-url: "http://spinute.org/ruby"
+baseurl: "http://spinute.org"
+url: "/ruby/gsoc2016"
 twitter_username: spinute
 github_username:  spinute
 
