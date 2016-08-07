@@ -2076,7 +2076,7 @@ rb_str_plus(VALUE str1, VALUE str2)
 	}
     }
     else {
-	int termlen = rb_enc_mbminlen(enc);
+	termlen = rb_enc_mbminlen(enc);
 	ptr1 = RSTRING_PTR(str1);
 	ptr2 = RSTRING_PTR(str2);
 
@@ -2410,7 +2410,7 @@ rb_str_change_terminator_length(VALUE str, const int oldtermlen, const int terml
 	if (!STR_EMBED_P(str)) {
 	    /* modify capa instead of realloc */
 	    assert(!FL_TEST((str), STR_SHARED));
-	    RSTRING(str)->as.heap.aux.capa = capa - (termlen - oldtermlen);
+	    SET_RSTRING_NOEMBED_CAPA(str, capa - (termlen - oldtermlen));
 	}
 	if (termlen > oldtermlen) {
 	    TERM_FILL(RSTRING_PTR(str) + len, termlen);
@@ -2618,7 +2618,7 @@ rb_rope_str_subseq(VALUE str, long i, long n)
     VALUE str_new, left, right;
     long llen;
     if (!STR_ROPE_P(str)) {
-	if (n == GET_RSTRING_ROPE_LEN(str)) {
+	if (n == RSTRING_LEN(str)) {
 	    return str;
 	}
 	str_new = rb_str_new_frozen(rb_str_new_frozen(str));
