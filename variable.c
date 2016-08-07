@@ -25,6 +25,7 @@ static ID autoload, classpath, tmp_classpath, classid;
 
 static void check_before_mod_set(VALUE, ID, VALUE, const char *);
 static void setup_const_entry(rb_const_entry_t *, VALUE, VALUE, rb_const_flag_t);
+static VALUE rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility);
 static st_table *generic_iv_tbl;
 static st_table *generic_iv_tbl_compat;
 
@@ -388,7 +389,7 @@ VALUE
 rb_path_to_class(VALUE pathname)
 {
     rb_encoding *enc = rb_enc_get(pathname);
-    const char *pbeg, *p, *path = RSTRING_PTR(pathname);
+    const char *pbeg, *pend, *p, *path = RSTRING_PTR(pathname);
     ID id;
     VALUE c = rb_cObject;
 
@@ -396,24 +397,26 @@ rb_path_to_class(VALUE pathname)
 	rb_raise(rb_eArgError, "invalid class path encoding (non ASCII)");
     }
     pbeg = p = path;
-    if (path[0] == '#') {
+    pend = path + RSTRING_LEN(pathname);
+    if (path == pend || path[0] == '#') {
 	rb_raise(rb_eArgError, "can't retrieve anonymous class %"PRIsVALUE,
 		 QUOTE(pathname));
     }
-    while (*p) {
-	while (*p && *p != ':') p++;
+    while (p < pend) {
+	while (p < pend && *p != ':') p++;
 	id = rb_check_id_cstr(pbeg, p-pbeg, enc);
-	if (p[0] == ':') {
-	    if (p[1] != ':') goto undefined_class;
+	if (p < pend && p[0] == ':') {
+	    if ((size_t)(pend - p) < 2 || p[1] != ':') goto undefined_class;
 	    p += 2;
 	    pbeg = p;
 	}
-	if (!id || !rb_const_defined_at(c, id)) {
+	if (!id) {
 	  undefined_class:
 	    rb_raise(rb_eArgError, "undefined class/module % "PRIsVALUE,
 		     rb_str_subseq(pathname, 0, p-path));
 	}
-	c = rb_const_get_at(c, id);
+	c = rb_const_search(c, id, TRUE, FALSE, FALSE);
+	if (c == Qundef) goto undefined_class;
 	if (!RB_TYPE_P(c, T_MODULE) && !RB_TYPE_P(c, T_CLASS)) {
 	    rb_raise(rb_eTypeError, "%"PRIsVALUE" does not refer to class/module",
 		     pathname);
@@ -2238,6 +2241,14 @@ rb_const_warn_if_deprecated(const rb_const_entry_t *ce, VALUE klass, ID id)
 static VALUE
 rb_const_get_0(VALUE klass, ID id, int exclude, int recurse, int visibility)
 {
+    VALUE c = rb_const_search(klass, id, exclude, recurse, visibility);
+    if (c != Qundef) return c;
+    return rb_const_missing(klass, ID2SYM(id));
+}
+
+static VALUE
+rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
+{
     VALUE value, tmp, av;
     int mod_retry = 0;
 
@@ -2276,7 +2287,7 @@ rb_const_get_0(VALUE klass, ID id, int exclude, int recurse, int visibility)
 	goto retry;
     }
 
-    return rb_const_missing(klass, ID2SYM(id));
+    return Qundef;
 }
 
 VALUE
@@ -2388,7 +2399,7 @@ sv_i(ID key, VALUE v, void *a)
 static enum rb_id_table_iterator_result
 rb_local_constants_i(ID const_name, VALUE const_value, void *ary)
 {
-    if (rb_is_const_id(const_name)) {
+    if (rb_is_const_id(const_name) && !RB_CONST_PRIVATE_P((rb_const_entry_t *)const_value)) {
 	rb_ary_push((VALUE)ary, ID2SYM(const_name));
     }
     return ID_TABLE_CONTINUE;

@@ -2862,6 +2862,30 @@ rb_hash_to_proc(VALUE hash)
     return rb_func_proc_new(hash_proc_call, hash);
 }
 
+static int
+add_new_i(st_data_t *key, st_data_t *val, st_data_t arg, int existing)
+{
+    VALUE *args = (VALUE *)arg;
+    if (existing) return ST_STOP;
+    RB_OBJ_WRITTEN(args[0], Qundef, (VALUE)*key);
+    RB_OBJ_WRITE(args[0], (VALUE *)val, args[1]);
+    return ST_CONTINUE;
+}
+
+/*
+ * add +key+ to +val+ pair if +hash+ does not contain +key+.
+ * returns non-zero if +key+ was contained.
+ */
+int
+rb_hash_add_new_element(VALUE hash, VALUE key, VALUE val)
+{
+    st_table *tbl = rb_hash_tbl_raw(hash);
+    VALUE args[2];
+    args[0] = hash;
+    args[1] = val;
+    return st_update(tbl, (st_data_t)key, add_new_i, (st_data_t)args);
+}
+
 static int path_tainted = -1;
 
 static char **origenviron;
@@ -2971,7 +2995,7 @@ get_env_cstr(
     if (memchr(var, '\0', RSTRING_LEN(str))) {
 	rb_raise(rb_eArgError, "bad environment variable %s: contains null byte", name);
     }
-    return var;
+    return rb_str_fill_terminator(str, 1); /* ASCII compatible */
 }
 
 #ifdef _WIN32

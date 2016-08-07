@@ -2145,7 +2145,7 @@ break2:
         for (; c >= '0' && c <= '9'; c = *++s) {
 have_dig:
             nz++;
-            if (nf > DBL_DIG * 4) continue;
+            if (nd > DBL_DIG * 4) continue;
             if (c -= '0') {
                 nf += nz;
                 for (i = 1; i < nz; i++)
@@ -3452,7 +3452,11 @@ ruby_dtoa(double d_, int mode, int ndigits, int *decpt, int *sign, char **rve)
                     ilim = i;
                 *s++ = '0' + (int)L;
                 if (i == ilim) {
+                    double x;
                     if (dval(d) > 0.5 + dval(eps))
+                        goto bump_up;
+                    else if (!isinf(x = d_ * tens[ilim-1] + 0.5) &&
+                             dval(d) > modf(x, &x))
                         goto bump_up;
                     else if (dval(d) < 0.5 - dval(eps)) {
                         while (*--s == '0') ;

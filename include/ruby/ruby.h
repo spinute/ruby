@@ -439,8 +439,8 @@ enum ruby_special_consts {
 #endif
 #define SYMBOL_FLAG RUBY_SYMBOL_FLAG
 
-#define RTEST(v) !(((VALUE)(v) & ~Qnil) == 0)
-#define NIL_P(v) !((VALUE)(v) != Qnil)
+#define RTEST(v) !(((VALUE)(v) & ~RUBY_Qnil) == 0)
+#define NIL_P(v) !((VALUE)(v) != RUBY_Qnil)
 
 #define CLASS_OF(v) rb_class_of((VALUE)(v))
 
@@ -1513,6 +1513,7 @@ rb_obj_write(VALUE a, VALUE *slot, VALUE b, RB_UNUSED_VAR(const char *filename),
     return a;
 }
 
+#define RUBY_INTEGER_UNIFICATION 1
 #define RB_INTEGER_TYPE_P(obj) rb_integer_type_p(obj)
 static inline int
 rb_integer_type_p(VALUE obj)
@@ -1876,7 +1877,9 @@ RUBY_EXTERN VALUE rb_mWaitWritable;
 RUBY_EXTERN VALUE rb_cBasicObject;
 RUBY_EXTERN VALUE rb_cObject;
 RUBY_EXTERN VALUE rb_cArray;
+#ifndef RUBY_INTEGER_UNIFICATION
 RUBY_EXTERN VALUE rb_cBignum;
+#endif
 RUBY_EXTERN VALUE rb_cBinding;
 RUBY_EXTERN VALUE rb_cClass;
 RUBY_EXTERN VALUE rb_cCont;
@@ -1886,7 +1889,9 @@ RUBY_EXTERN VALUE rb_cFalseClass;
 RUBY_EXTERN VALUE rb_cEncoding;
 RUBY_EXTERN VALUE rb_cEnumerator;
 RUBY_EXTERN VALUE rb_cFile;
+#ifndef RUBY_INTEGER_UNIFICATION
 RUBY_EXTERN VALUE rb_cFixnum;
+#endif
 RUBY_EXTERN VALUE rb_cFloat;
 RUBY_EXTERN VALUE rb_cHash;
 RUBY_EXTERN VALUE rb_cInteger;

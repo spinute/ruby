@@ -31,7 +31,9 @@
 
 #define RB_BIGNUM_TYPE_P(x) RB_TYPE_P((x), T_BIGNUM)
 
+#ifndef RUBY_INTEGER_UNIFICATION
 VALUE rb_cBignum;
+#endif
 const char ruby_digitmap[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 #ifndef SIZEOF_BDIGIT_DBL
@@ -5077,10 +5079,8 @@ rb_big2ulong(VALUE x)
         return num;
     }
     else {
-        if (num <= LONG_MAX)
-            return -(long)num;
-        if (num == 1+(unsigned long)(-(LONG_MIN+1)))
-            return LONG_MIN;
+        if (num <= 1+(unsigned long)(-(LONG_MIN+1)))
+            return -(long)(num-1)-1;
     }
     rb_raise(rb_eRangeError, "bignum out of range of unsigned long");
 }
@@ -5095,10 +5095,8 @@ rb_big2long(VALUE x)
             return num;
     }
     else {
-        if (num <= LONG_MAX)
-            return -(long)num;
-        if (num == 1+(unsigned long)(-(LONG_MIN+1)))
-            return LONG_MIN;
+        if (num <= 1+(unsigned long)(-(LONG_MIN+1)))
+            return -(long)(num-1)-1;
     }
     rb_raise(rb_eRangeError, "bignum too big to convert into `long'");
 }
@@ -5137,10 +5135,8 @@ rb_big2ull(VALUE x)
         return num;
     }
     else {
-        if (num <= LLONG_MAX)
-            return -(LONG_LONG)num;
-        if (num == 1+(unsigned LONG_LONG)(-(LLONG_MIN+1)))
-            return LLONG_MIN;
+        if (num <= 1+(unsigned LONG_LONG)(-(LLONG_MIN+1)))
+            return -(LONG_LONG)(num-1)-1;
     }
     rb_raise(rb_eRangeError, "bignum out of range of unsigned long long");
 }
@@ -5155,10 +5151,8 @@ rb_big2ll(VALUE x)
             return num;
     }
     else {
-        if (num <= LLONG_MAX)
-            return -(LONG_LONG)num;
-        if (num == 1+(unsigned LONG_LONG)(-(LLONG_MIN+1)))
-            return LLONG_MIN;
+        if (num <= 1+(unsigned LONG_LONG)(-(LLONG_MIN+1)))
+            return -(LONG_LONG)(num-1)-1;
     }
     rb_raise(rb_eRangeError, "bignum too big to convert into `long long'");
 }
@@ -6783,7 +6777,9 @@ rb_big_even_p(VALUE num)
 void
 Init_Bignum(void)
 {
+#ifndef RUBY_INTEGER_UNIFICATION
     rb_cBignum = rb_cInteger;
+#endif
     rb_define_const(rb_cObject, "Bignum", rb_cInteger);
 
     rb_define_method(rb_cInteger, "coerce", rb_int_coerce, 1);

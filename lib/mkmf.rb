@@ -250,6 +250,7 @@ module MakeMakefile
 
   OUTFLAG = CONFIG['OUTFLAG']
   COUTFLAG = CONFIG['COUTFLAG']
+  CSRCFLAG = CONFIG['CSRCFLAG']
   CPPOUTFILE = config_string('CPPOUTFILE') {|str| str.sub(/\bconftest\b/, CONFTEST)}
 
   def rm_f(*files)
@@ -1940,6 +1941,7 @@ VPATH = #{vpath.join(CONFIG['PATH_SEPARATOR'])}
     extconf_h = $extconf_h ? "-DRUBY_EXTCONF_H=\\\"$(RUBY_EXTCONF_H)\\\" " : $defs.join(" ") << " "
     headers = %w[
       $(hdrdir)/ruby.h
+      $(hdrdir)/ruby/backward.h
       $(hdrdir)/ruby/ruby.h
       $(hdrdir)/ruby/defines.h
       $(hdrdir)/ruby/missing.h
@@ -1947,6 +1949,7 @@ VPATH = #{vpath.join(CONFIG['PATH_SEPARATOR'])}
       $(hdrdir)/ruby/st.h
       $(hdrdir)/ruby/subst.h
     ]
+    headers += $headers
     if RULE_SUBST
       headers.each {|h| h.sub!(/.*/, &RULE_SUBST.method(:%))}
     end
@@ -1963,6 +1966,7 @@ LIBRUBYARG_STATIC = #$LIBRUBYARG_STATIC
 empty =
 OUTFLAG = #{OUTFLAG}$(empty)
 COUTFLAG = #{COUTFLAG}$(empty)
+CSRCFLAG = #{CSRCFLAG}$(empty)
 
 RUBY_EXTCONF_H = #{$extconf_h}
 cflags   = #{CONFIG['cflags']}
@@ -2286,6 +2290,7 @@ ORIG_SRCS = #{orig_srcs.collect(&File.method(:basename)).join(' ')}
 SRCS = $(ORIG_SRCS) #{(srcs - orig_srcs).collect(&File.method(:basename)).join(' ')}
 OBJS = #{$objs.join(" ")}
 HDRS = #{hdrs.map{|h| '$(srcdir)/' + File.basename(h)}.join(' ')}
+LOCAL_HDRS = #{$headers.join(' ')}
 TARGET = #{target}
 TARGET_NAME = #{target && target[/\A\w+/]}
 TARGET_ENTRY = #{EXPORT_PREFIX || ''}Init_$(TARGET_NAME)
@@ -2527,6 +2532,7 @@ site-install-rb: install-rb
 
     $objs = nil
     $srcs = nil
+    $headers = []
     $libs = ""
     if $enable_shared or RbConfig.expand(config["LIBRUBY"].dup) != RbConfig.expand(config["LIBRUBY_A"].dup)
       $LIBRUBYARG = config['LIBRUBYARG']
@@ -2652,12 +2658,12 @@ MESSAGE
   ##
   # Command which will compile C files in the generated Makefile
 
-  COMPILE_C = config_string('COMPILE_C') || '$(CC) $(INCFLAGS) $(CPPFLAGS) $(CFLAGS) $(COUTFLAG)$@ -c $<'
+  COMPILE_C = config_string('COMPILE_C') || '$(CC) $(INCFLAGS) $(CPPFLAGS) $(CFLAGS) $(COUTFLAG)$@ -c $(CSRCFLAG)$<'
 
   ##
   # Command which will compile C++ files in the generated Makefile
 
-  COMPILE_CXX = config_string('COMPILE_CXX') || '$(CXX) $(INCFLAGS) $(CPPFLAGS) $(CXXFLAGS) $(COUTFLAG)$@ -c $<'
+  COMPILE_CXX = config_string('COMPILE_CXX') || '$(CXX) $(INCFLAGS) $(CPPFLAGS) $(CXXFLAGS) $(COUTFLAG)$@ -c $(CSRCFLAG)$<'
 
   ##
   # Command which will translate C files to assembler sources in the generated Makefile

@@ -436,7 +436,7 @@ get_special_folder(int n, WCHAR *buf, size_t len)
     LPITEMIDLIST pidl;
     LPMALLOC alloc;
     BOOL f = FALSE;
-    typedef BOOL (*get_path_func)(LPITEMIDLIST, WCHAR*, DWORD, int);
+    typedef BOOL (WINAPI *get_path_func)(LPITEMIDLIST, WCHAR*, DWORD, int);
     static get_path_func func = (get_path_func)-1;
 
     if (func == (get_path_func)-1) {
@@ -504,6 +504,11 @@ rb_w32_special_folder(int type)
     regulate_path(path);
     return rb_w32_conv_from_wchar(path, rb_filesystem_encoding());
 }
+
+#if defined _MSC_VER && _MSC_VER <= 1200
+/* License: Ruby's */
+#define GetSystemWindowsDirectoryW GetWindowsDirectoryW
+#endif
 
 /* License: Ruby's */
 UINT
@@ -4942,7 +4947,7 @@ w32_symlink(UINT cp, const char *src, const char *link)
     DWORD flag = 0;
     BOOLEAN ret;
 
-    typedef DWORD (WINAPI *create_symbolic_link_func)(WCHAR*, WCHAR*, DWORD);
+    typedef BOOLEAN (WINAPI *create_symbolic_link_func)(WCHAR*, WCHAR*, DWORD);
     static create_symbolic_link_func create_symbolic_link =
 	(create_symbolic_link_func)-1;
 
