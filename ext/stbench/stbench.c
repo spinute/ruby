@@ -4,6 +4,14 @@
 
 static VALUE rb_cSTBench;
 
+static void
+usage(void)
+{
+    printf("bench = STBench(type[, size, scale, senario])");
+    printf("type = 'num' | 'str'");
+    printf("bench ");
+}
+
 static void stbench_dmark(void *stbench) { (void) stbench; }
 static void stbench_dfree(void *stbench) { (void) stbench; }
 static size_t stbench_dsize(const void *stbench) { (void) stbench; return 0; }
@@ -17,38 +25,74 @@ const rb_data_type_t stbench_type = {
 static VALUE stbench_alloc(VALUE klass) { return stbench2value(0); }
 
 static st_table *stb_table = NULL;
+typedef enum {KeyNum, KeyStr, Unset} st_k_type;
+st_k_type key_type = Unset;
+#define SCALE_BASE 100000
+static int n_trial = 1 * SCALE_BASE;
 
 static VALUE
 stbench_init(int argc, VALUE *argv, VALUE self)
 {
-    VALUE str1, str2;
+    VALUE arg_type, arg_ht_size, arg_scale;
     char *vtype;
 
-    rb_scan_args(argc, argv, "11", &str1, &str2);
+    if (stb_table)
+	st_free_table(stb_table);
 
-    Check_Type(str1, T_STRING);
+    rb_scan_args(argc, argv, "12", &arg_type, &arg_ht_size, &arg_scale);
 
-    vtype = rb_string_value_cstr(&str1);
+    Check_Type(arg_type, T_STRING);
 
-    if (str2 != Qnil)
+    vtype = rb_string_value_cstr(&arg_type);
+
+    if (arg_scale != Qnil)
     {
-	Check_Type(str2, T_FIXNUM);
+	Check_Type(arg_scale, T_FIXNUM);
+	n_trial = FIX2INT(arg_scale) * SCALE_BASE;
+    }
+
+    if (arg_ht_size != Qnil)
+    {
+	int ht_size;
+	Check_Type(arg_ht_size, T_FIXNUM);
+	ht_size = FIX2INT(arg_ht_size);
+
 	if (strcmp(vtype, "num") == 0)
-	    stb_table = st_init_numtable_with_size(FIX2INT(str2));
+	{
+	    key_type = KeyNum;
+	    stb_table = st_init_numtable_with_size(ht_size);
+	}
 	else if (strcmp(vtype, "str") == 0)
-	    stb_table = st_init_strtable_with_size(FIX2INT(str2));
+	{
+	    key_type = KeyStr;
+	    stb_table = st_init_strtable_with_size(FIX2INT(arg_ht_size));
+	}
 	else
-	    rb_raise(rb_eArgError, "%s: unexpected args for stbench (type, size) where type is 'num', or 'str'", __func__);
+	{
+	    usage();
+	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
+	}
     }
     else
     {
 	if (strcmp(vtype, "num") == 0)
+	{
+	    key_type = KeyNum;
 	    stb_table = st_init_numtable();
+	}
 	else if (strcmp(vtype, "str") == 0)
+	{
+	    key_type = KeyStr;
 	    stb_table = st_init_strtable();
+	}
 	else
-	    rb_raise(rb_eArgError, "%s: unexpected args for stbench (type, size) where type is 'num', or 'str'", __func__);
+	{
+	    usage();
+	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
+	}
     }
+
+
 
     return self;
 }
@@ -63,7 +107,18 @@ stbench_init_only(VALUE self)
 static VALUE
 stbench_insert(VALUE self)
 {
-    printf("insert called");
+    switch (key_type)
+    {
+    case KeyNum:
+	st_insert(stb_table, 123, 456);
+	break;
+    case KeyStr:
+	st_insert(stb_table, (st_data_t)"aoeusnth", (st_data_t)"htnsueoa");
+	break;
+    default:
+	rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+    }
+
     return self;
 }
 static VALUE
