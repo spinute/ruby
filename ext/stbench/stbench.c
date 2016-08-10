@@ -30,24 +30,12 @@ static VALUE rb_cSTBench;
 
 static void
 usage(void) {
-    elog("bench = STBench(type[, ht_init_size, scale, pattern])");
-    elog("type = 'num' | 'str'");
-    elog("bench ");
+    elog("TODO: Write usage");
 }
 
-static void
-stbench_dmark(void *stbench) {
-    (void) stbench;
-}
-static void
-stbench_dfree(void *stbench) {
-    (void) stbench;
-}
-static size_t
-stbench_dsize(const void *stbench) {
-    (void) stbench;
-    return 0;
-}
+static void stbench_dmark(void *stbench) { (void) stbench; }
+static void stbench_dfree(void *stbench) { (void) stbench; }
+static size_t stbench_dsize(const void *stbench) { (void) stbench; return 0; }
 const rb_data_type_t stbench_type = {
     "cstbench", {stbench_dmark, stbench_dfree, stbench_dsize, {0}}, 0, 0, 0};
 #define value2stbench(stbench, value) \
@@ -56,10 +44,7 @@ const rb_data_type_t stbench_type = {
     TypedData_Wrap_Struct(rb_cSTBench, &stbench_type, (stbench))
 #define value2stbench_checked(value) \
     ((stbench) rb_check_typeddata((value), &stbench_type))
-static VALUE
-stbench_alloc(VALUE klass) {
-    return stbench2value(0);
-}
+static VALUE stbench_alloc(VALUE klass) { return stbench2value(0); }
 
 static st_table *stb_table = NULL;
 typedef enum { KeyNum, KeyStr, Unset } st_k_type;
@@ -68,16 +53,13 @@ typedef enum { Same, Different, Random } st_pattern;
 st_pattern key_pattern = Same;
 #define SCALE_BASE 100000
 static int n_trial = 1 * SCALE_BASE;
-static int key_len = 5;
+static int key_len = 5, ht_size = 0;
 
 static VALUE
 stbench_init(int argc, VALUE *argv, VALUE self) {
     VALUE arg_type, arg_ht_size, arg_scale, arg_pattern, arg_keylen;
     int ht_size;
     char *vtype, *vpattern;
-
-    if (stb_table)
-	st_free_table(stb_table);
 
     rb_scan_args(argc, argv, "41", &arg_type, &arg_ht_size, &arg_scale,
 	    &arg_pattern, &arg_keylen);
@@ -112,30 +94,50 @@ stbench_init(int argc, VALUE *argv, VALUE self) {
 	rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
     }
 
+    return self;
+}
+
+static VALUE
+stbench_init_only(VALUE self) {
+    if (stb_table)
+	st_free_table(stb_table);
+
     switch (key_type) {
 	case KeyNum:
 	    if (ht_size > 0)
-		stb_table = st_init_numtable_with_size(ht_size);
+		for (int i = 0; i < n_trial; i++)
+		{
+		    stb_table = st_init_numtable_with_size(ht_size);
+		    st_free_table(stb_table);
+		}
 	    else
-		stb_table = st_init_numtable();
+		for (int i = 0; i < n_trial; i++)
+		{
+		    stb_table = st_init_numtable();
+		    st_free_table(stb_table);
+		}
 	    break;
 	case KeyStr:
 	    if (ht_size > 0)
-		stb_table = st_init_strtable_with_size(ht_size);
+		for (int i = 0; i < n_trial; i++)
+		{
+		    stb_table = st_init_strtable_with_size(ht_size);
+		    st_free_table(stb_table);
+		}
 	    else
-		stb_table = st_init_strtable();
+		for (int i = 0; i < n_trial; i++)
+		{
+		    stb_table = st_init_strtable();
+		    st_free_table(stb_table);
+		}
 	    break;
 	default:
 	    usage();
 	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
     }
 
-    return self;
-}
+    stb_table = NULL;
 
-static VALUE
-stbench_init_only(VALUE self) {
-    elog("initonly called");
     return self;
 }
 
@@ -183,6 +185,24 @@ fill_array_with_different_values(void) {
 static VALUE
 stbench_setup(VALUE self)
 {
+    switch (key_type) {
+	case KeyNum:
+	    if (ht_size > 0)
+		stb_table = st_init_numtable_with_size(ht_size);
+	    else
+		stb_table = st_init_numtable();
+	    break;
+	case KeyStr:
+	    if (ht_size > 0)
+		stb_table = st_init_strtable_with_size(ht_size);
+	    else
+		stb_table = st_init_strtable();
+	    break;
+	default:
+	    usage();
+	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
+    }
+
     switch (key_type) {
 	case KeyNum:
 	    if (key_pattern == Same)
@@ -259,6 +279,12 @@ stbench_cleanup(VALUE self)
     else
 	rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
 
+    if (stb_table)
+    {
+	st_free_table(stb_table);
+	stb_table = NULL;
+    }
+
     return self;
 }
 
@@ -281,7 +307,7 @@ Init_STBench(void) {
     rb_define_alloc_func(rb_cSTBench, stbench_alloc);
     rb_define_private_method(rb_cSTBench, "initialize", stbench_init, -1);
 
-    rb_define_method(rb_cSTBench, "call_init", stbench_init_only, -1);
+    rb_define_method(rb_cSTBench, "ht_init", stbench_init_only, -1);
     rb_define_method(rb_cSTBench, "setup", stbench_setup, 0);
     rb_define_method(rb_cSTBench, "cleanup", stbench_cleanup, 0);
     rb_define_method(rb_cSTBench, "insert", stbench_insert, 0);
