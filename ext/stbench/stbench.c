@@ -10,13 +10,42 @@ static VALUE rb_cSTBench;
 static st_table *stb_table = NULL;
 #define SCALE_BASE 100000
 
-static int *int_array = NULL;
-static char **char_array = NULL;
-
 /* XXX: rb_cRandom is valid randgen ?? */
 #define N_OF_CHARS ('z' - 'A' + 1)
 #define RAND_UPTO(max) ((int) rb_random_ulong_limited((rb_cRandom), (max) -1))
 #define GET_RAND_CHAR() ('A' + RAND_UPTO(N_OF_CHARS))
+
+static int *int_array = NULL;
+static char **char_array = NULL;
+
+static void
+fill_array_with_random_strings(int array_size, int str_len) {
+    for (int i = 0; i < array_size; i++) {
+	for (int j = 0; j < str_len; j++)
+	    char_array[i][j] = GET_RAND_CHAR();
+	char_array[i][str_len] = '\0';
+    }
+}
+
+static void
+fill_array_with_random_values(int array_size) {
+    for (int i = 0; i < array_size; i++)
+	int_array[i] = RAND_UPTO(array_size);
+}
+
+static void
+fill_array_with_different_values(int array_size) {
+    /* Fisher-Yates shuffle */
+    for (int i = 0; i < array_size; i++)
+	int_array[i] = i;
+    for (int i = 0; i < array_size; i++) {
+	int j = RAND_UPTO(array_size - i) + i;
+	int tmp = int_array[j];
+	int_array[j] = int_array[i];
+	int_array[i] = tmp;
+    }
+}
+
 
 static long rss_before, rss_after;
 #define REPORT_RSS() elog("before: %10ld, after: %10ld, diff%10ld\n", (rss_before), (rss_after), (rss_after) - (rss_before));
@@ -182,9 +211,9 @@ typedef struct params_insert_tag
 {
     STBenchKeyType type;
     STBenchPattern pattern;
-    long n_trial;
-    long ht_init_size;
-    long key_len;
+    int n_trial;
+    int ht_init_size;
+    int key_len;
 } ParamsInsert;
 static ParamsInsert params_insert;
 
@@ -204,34 +233,6 @@ stbench_insert_validate_params(void)
     }
     if (params_insert.n_trial*2 > acc) /* Safety for Different pattern */
 	rb_raise(rb_eArgError, "key_len is too short");
-}
-
-static void
-fill_array_with_random_chars(void) {
-    for (int i = 0; i < params_insert.n_trial; i++) {
-	for (int j = 0; j < params_insert.key_len; j++)
-	    char_array[i][j] = GET_RAND_CHAR();
-	char_array[i][params_insert.key_len] = '\0';
-    }
-}
-
-static void
-fill_array_with_random_values(void) {
-    for (int i = 0; i < params_insert.n_trial; i++)
-	int_array[i] = RAND_UPTO(params_insert.n_trial);
-}
-
-static void
-fill_array_with_different_values(void) {
-    /* Fisher-Yates shuffle */
-    for (int i = 0; i < params_insert.n_trial; i++)
-	int_array[i] = i;
-    for (int i = 0; i < params_insert.n_trial; i++) {
-	int j = RAND_UPTO(params_insert.n_trial - i) + i;
-	int tmp = int_array[j];
-	int_array[j] = int_array[i];
-	int_array[i] = tmp;
-    }
 }
 
 static VALUE
@@ -281,11 +282,11 @@ stbench_insert_setup(int argc, VALUE argv[], VALUE self)
 	    assert(!int_array);
 	    int_array = xmalloc(sizeof(int) * params_insert.n_trial);
 	    if (params_insert.pattern == PatternSame)
-		fill_array_with_different_values(); /* Dummy for memory usage comparison */
+		fill_array_with_different_values(params_insert.n_trial); /* Dummy for memory usage comparison */
 	    else if (params_insert.pattern == PatternDifferent)
-		fill_array_with_different_values();
+		fill_array_with_different_values(params_insert.n_trial);
 	    else if (params_insert.pattern == PatternRandom)
-		fill_array_with_random_values();
+		fill_array_with_random_values(params_insert.n_trial);
 	    break;
 	case KeyTypeStr:
 	    assert(!char_array);
@@ -293,11 +294,11 @@ stbench_insert_setup(int argc, VALUE argv[], VALUE self)
 	    for (int i = 0; i < params_insert.n_trial; i++)
 		char_array[i] = xmalloc(sizeof(char) * (params_insert.key_len + 1)); /* +1 for NUL */
 	    if (params_insert.pattern == PatternSame)
-		fill_array_with_random_chars(); /* Dummy for memory usage comparison */
+		fill_array_with_random_strings(params_insert.n_trial, params_insert.key_len); /* Dummy for memory usage comparison */
 	    else if (params_insert.pattern == PatternDifferent)
 		rb_raise(rb_eRuntimeError, "%s: not implemented", __func__);
 	    else if (params_insert.pattern == PatternRandom)
-		fill_array_with_random_chars();
+		fill_array_with_random_strings(params_insert.n_trial, params_insert.key_len);
 	    break;
 	default:
 	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
@@ -376,9 +377,9 @@ stbench_insert_cleanup(VALUE self)
 typedef struct params_search_tag
 {
     STBenchKeyType type;
-    long n_trial;
-    long ht_init_size;
-    long key_len;
+    int n_trial;
+    int ht_init_size;
+    int key_len;
 } ParamsSerch;
 static ParamsSerch params_search;
 
