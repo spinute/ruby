@@ -3,5 +3,5 @@
 #include <stdarg.h>
 #define elog(...) fprintf(stderr, __VA_ARGS__)
 
-void report_rss(const char header[]);
+long get_rss(void);
 void dump_backtrace(void);

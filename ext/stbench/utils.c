@@ -5,13 +5,12 @@
 #include <stdio.h>
 #include <sys/resource.h>
 
-void
-report_rss(const char header[]) {
+long
+get_rss(void) {
     struct rusage ru;
     getrusage(RUSAGE_SELF, &ru);
-    elog("%s Max RSS = %ld\n", header, ru.ru_maxrss);
+    return ru.ru_maxrss;
 }
-
 
 void
 dump_backtrace(void) {

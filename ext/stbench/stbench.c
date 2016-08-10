@@ -15,6 +15,9 @@ static char **char_array = NULL;
 #define RAND_UPTO(max) ((int) rb_random_ulong_limited((rb_cRandom), (max) -1))
 #define GET_RAND_CHAR() ('A' + RAND_UPTO('z' - 'A' + 1))
 
+static long rss_before, rss_after;
+#define REPORT_RSS() elog("before: %10ld, after: %10ld, diff%10ld\n", (rss_before), (rss_after), (rss_after) - (rss_before));
+
 typedef enum stbench_scenario_tag
 {
     STBenchNotSet,
@@ -115,7 +118,7 @@ stbench_init_setup(int argc, VALUE argv[], VALUE self)
 
     stbench_init_validate_params();
 
-    report_rss("After setup");
+    rss_before = get_rss();
 
     return self;
 }
@@ -164,7 +167,8 @@ stbench_init_run(VALUE self) {
 static VALUE
 stbench_init_cleanup(VALUE self)
 {
-    report_rss("After benchmark");
+    rss_after = get_rss();
+    REPORT_RSS();
     assert(running_scenario == STBenchInit);
     running_scenario = STBenchNotSet;
     return self;
@@ -286,7 +290,7 @@ stbench_insert_setup(int argc, VALUE argv[], VALUE self)
 	    break;
     }
 
-    report_rss("After setup");
+    rss_before = get_rss();
 
     return self;
 }
@@ -320,15 +324,14 @@ stbench_insert_run(VALUE self) {
 	    break;
     }
 
-    report_rss("After benchmark");
-
     return self;
 }
 
 static VALUE
 stbench_insert_cleanup(VALUE self)
 {
-    report_rss("After benchmark");
+    rss_after = get_rss();
+    REPORT_RSS();
 
     assert(running_scenario == STBenchInsert);
     running_scenario = STBenchNotSet;
