@@ -2,9 +2,17 @@
 #include "../../internal.h"
 #include "ruby/st.h"
 #include <stdio.h>
+#include <sys/resource.h>
 
 #include <stdarg.h>
 #define elog(...) fprintf(stderr, __VA_ARGS__)
+
+static void
+report_rss(const char header[]) {
+    struct rusage ru;
+    getrusage(RUSAGE_SELF, &ru);
+    printf("%s Max RSS = %ld\n", header, ru.ru_maxrss);
+}
 
 #include <execinfo.h>
 static void
@@ -173,43 +181,87 @@ fill_array_with_different_values(void) {
 }
 
 static VALUE
+stbench_setup(VALUE self)
+{
+    switch (key_type) {
+	case KeyNum:
+	    if (key_pattern == Same)
+		fill_array_with_different_values();
+	    else if (key_pattern == Different)
+		fill_array_with_different_values();
+	    else if (key_pattern == Random)
+		fill_array_with_random_values();
+	    break;
+	case KeyStr:
+	    if (key_pattern == Same)
+		fill_carray_with_random_values();
+	    else if (key_pattern == Different)
+		rb_raise(rb_eRuntimeError, "%s: not implemented", __func__);
+	    else if (key_pattern == Random)
+		fill_carray_with_random_values();
+	    break;
+	default:
+	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+	    break;
+    }
+    report_rss("After setup");
+
+    return self;
+}
+
+static VALUE
 stbench_insert(VALUE self) {
     switch (key_type) {
 	case KeyNum:
-	    if (key_pattern == Same) {
-		fill_array_with_different_values();
+	    if (key_pattern == Same)
 		for (int i = 0; i < n_trial; i++)
 		    st_insert(stb_table, 123, 456);
-	    } else if (key_pattern == Different) {
-		fill_array_with_different_values();
+	    else if (key_pattern == Different)
 		for (int i = 0; i < n_trial; i++)
 		    st_insert(stb_table, int_array[i], 456);
-	    } else if (key_pattern == Random) {
-		fill_array_with_random_values();
+	    else if (key_pattern == Random)
 		for (int i = 0; i < n_trial; i++)
 		    st_insert(stb_table, int_array[i], 456);
-	    }
 	    break;
 	case KeyStr:
-	    if (key_pattern == Same) {
-		fill_carray_with_random_values();
+	    if (key_pattern == Same)
 		for (int i = 0; i < n_trial; i++)
 		    st_insert(stb_table, (st_data_t) char_array[123], 456);
-	    } else if (key_pattern == Different) {
+	    else if (key_pattern == Different)
 		rb_raise(rb_eRuntimeError, "%s: not implemented", __func__);
-	    } else if (key_pattern == Random) {
-		fill_carray_with_random_values();
+	    else if (key_pattern == Random)
 		for (int i = 0; i < n_trial; i++)
 		    st_insert(stb_table, (st_data_t) char_array[i], 456);
-	    }
 	    break;
 	default:
 	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
 	    break;
     }
 
+    report_rss("After benchmark");
+
     return self;
 }
+
+static VALUE
+stbench_cleanup(VALUE self)
+{
+    if (key_type == KeyNum)
+    {
+	xfree(int_array);
+	int_array = NULL;
+    }
+    else if (key_type == KeyStr)
+    {
+	xfree(char_array);
+	char_array = NULL;
+    }
+    else
+	rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+
+    return self;
+}
+
 static VALUE
 stbench_delete(VALUE self) {
     printf("delete called\n");
@@ -230,6 +282,8 @@ Init_STBench(void) {
     rb_define_private_method(rb_cSTBench, "initialize", stbench_init, -1);
 
     rb_define_method(rb_cSTBench, "call_init", stbench_init_only, -1);
+    rb_define_method(rb_cSTBench, "setup", stbench_setup, 0);
+    rb_define_method(rb_cSTBench, "cleanup", stbench_cleanup, 0);
     rb_define_method(rb_cSTBench, "insert", stbench_insert, 0);
     rb_define_method(rb_cSTBench, "delete", stbench_delete, 0);
     rb_define_method(rb_cSTBench, "search", stbench_search, 0);
