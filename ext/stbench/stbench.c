@@ -4,6 +4,7 @@
 #include "./utils.h"
 
 #include <assert.h>
+#include <limits.h>
 
 static VALUE rb_cSTBench;
 static st_table *stb_table = NULL;
@@ -11,9 +12,11 @@ static st_table *stb_table = NULL;
 
 static int *int_array = NULL;
 static char **char_array = NULL;
+
 /* XXX: rb_cRandom is valid randgen ?? */
+#define N_OF_CHARS ('z' - 'A' + 1)
 #define RAND_UPTO(max) ((int) rb_random_ulong_limited((rb_cRandom), (max) -1))
-#define GET_RAND_CHAR() ('A' + RAND_UPTO('z' - 'A' + 1))
+#define GET_RAND_CHAR() ('A' + RAND_UPTO(N_OF_CHARS))
 
 static long rss_before, rss_after;
 #define REPORT_RSS() elog("before: %10ld, after: %10ld, diff%10ld\n", (rss_before), (rss_after), (rss_after) - (rss_before));
@@ -188,18 +191,27 @@ static ParamsInsert params_insert;
 static void
 stbench_insert_validate_params(void)
 {
+    int acc = 1;
     assert(params_insert.type == KeyTypeNum || params_insert.type == KeyTypeStr);
     assert(params_insert.n_trial > 0);
     assert(params_insert.ht_init_size >= 0);
     assert(params_insert.key_len > 0);
+    for (int i = 0; i < params_insert.key_len; i++)
+    {
+	if (acc > INT_MAX / N_OF_CHARS)
+	    return;
+	acc*=N_OF_CHARS;
+    }
+    if (params_insert.n_trial*2 > acc) /* Safety for Different pattern */
+	rb_raise(rb_eArgError, "key_len is too short");
 }
 
 static void
-fill_carray_with_random_values(void) {
+fill_array_with_random_chars(void) {
     for (int i = 0; i < params_insert.n_trial; i++) {
-	char_array[i] = xmalloc(sizeof(char) * params_insert.key_len);
 	for (int j = 0; j < params_insert.key_len; j++)
 	    char_array[i][j] = GET_RAND_CHAR();
+	char_array[i][params_insert.key_len] = '\0';
     }
 }
 
@@ -278,12 +290,14 @@ stbench_insert_setup(int argc, VALUE argv[], VALUE self)
 	case KeyTypeStr:
 	    assert(!char_array);
 	    char_array = xmalloc(sizeof(char *) * params_insert.n_trial);
+	    for (int i = 0; i < params_insert.n_trial; i++)
+		char_array[i] = xmalloc(sizeof(char) * (params_insert.key_len + 1)); /* +1 for NUL */
 	    if (params_insert.pattern == PatternSame)
-		fill_carray_with_random_values(); /* Dummy for memory usage comparison */
+		fill_array_with_random_chars(); /* Dummy for memory usage comparison */
 	    else if (params_insert.pattern == PatternDifferent)
 		rb_raise(rb_eRuntimeError, "%s: not implemented", __func__);
 	    else if (params_insert.pattern == PatternRandom)
-		fill_carray_with_random_values();
+		fill_array_with_random_chars();
 	    break;
 	default:
 	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
@@ -364,15 +378,25 @@ typedef struct params_search_tag
     STBenchKeyType type;
     long n_trial;
     long ht_init_size;
+    long key_len;
 } ParamsSerch;
 static ParamsSerch params_search;
 
 static void
 stbench_search_validate_params(void)
 {
+    int acc = 1;
     assert(params_search.type == KeyTypeNum || params_search.type == KeyTypeStr);
     assert(params_search.n_trial > 0);
     assert(params_search.ht_init_size > 0);
+    for (int i = 0; i < params_search.key_len; i++)
+    {
+	if (acc > INT_MAX/N_OF_CHARS)
+	    return;
+	acc*=N_OF_CHARS;
+    }
+    if (params_insert.n_trial*2 > acc) /* Safety for Different pattern */
+	rb_raise(rb_eArgError, "key_len is too short");
 }
 
 static VALUE
