@@ -1,15 +1,32 @@
 #include "ruby.h"
+#include "../../internal.h"
 #include "ruby/st.h"
 #include <stdio.h>
+
+#include <stdarg.h>
+#define elog(...) fprintf(stderr, __VA_ARGS__)
+
+#include <execinfo.h>
+static void
+get_backtrace(void)
+{
+    void *callstack[128];
+    int frames = backtrace(callstack, 128);
+    char** strs = backtrace_symbols(callstack, frames);
+    for (int i = 0; i < frames; ++i) {
+	fprintf(stdout, "%s\n", strs[i]);
+    }
+    free(strs);
+}
 
 static VALUE rb_cSTBench;
 
 static void
 usage(void)
 {
-    printf("bench = STBench(type[, size, scale, senario])");
-    printf("type = 'num' | 'str'");
-    printf("bench ");
+    elog("bench = STBench(type[, ht_init_size, scale, pattern])");
+    elog("type = 'num' | 'str'");
+    elog("bench ");
 }
 
 static void stbench_dmark(void *stbench) { (void) stbench; }
@@ -27,72 +44,73 @@ static VALUE stbench_alloc(VALUE klass) { return stbench2value(0); }
 static st_table *stb_table = NULL;
 typedef enum {KeyNum, KeyStr, Unset} st_k_type;
 st_k_type key_type = Unset;
+typedef enum {Same, Different, Random} st_pattern;
+st_pattern key_pattern = Same;
 #define SCALE_BASE 100000
 static int n_trial = 1 * SCALE_BASE;
 
 static VALUE
 stbench_init(int argc, VALUE *argv, VALUE self)
 {
-    VALUE arg_type, arg_ht_size, arg_scale;
-    char *vtype;
+    VALUE arg_type, arg_ht_size, arg_scale, arg_pattern;
+    int ht_size;
+    char *vtype, *vpattern;
 
     if (stb_table)
 	st_free_table(stb_table);
 
-    rb_scan_args(argc, argv, "12", &arg_type, &arg_ht_size, &arg_scale);
+    rb_scan_args(argc, argv, "40", &arg_type, &arg_ht_size, &arg_scale, &arg_pattern);
+
+    ht_size = NUM2INT(arg_ht_size);
+    n_trial = NUM2INT(arg_scale) * SCALE_BASE;
 
     Check_Type(arg_type, T_STRING);
-
     vtype = rb_string_value_cstr(&arg_type);
+    Check_Type(arg_pattern, T_STRING);
+    vpattern = rb_string_value_cstr(&arg_pattern);
 
-    if (arg_scale != Qnil)
-    {
-	Check_Type(arg_scale, T_FIXNUM);
-	n_trial = FIX2INT(arg_scale) * SCALE_BASE;
-    }
-
-    if (arg_ht_size != Qnil)
-    {
-	int ht_size;
-	Check_Type(arg_ht_size, T_FIXNUM);
-	ht_size = FIX2INT(arg_ht_size);
-
-	if (strcmp(vtype, "num") == 0)
-	{
-	    key_type = KeyNum;
-	    stb_table = st_init_numtable_with_size(ht_size);
-	}
-	else if (strcmp(vtype, "str") == 0)
-	{
-	    key_type = KeyStr;
-	    stb_table = st_init_strtable_with_size(FIX2INT(arg_ht_size));
-	}
-	else
-	{
-	    usage();
-	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
-	}
-    }
+    if (strcmp(vpattern, "same") == 0)
+	key_pattern = Same;
+    else if (strcmp(vpattern, "different") == 0)
+	key_pattern = Different;
+    else if (strcmp(vpattern, "random") == 0)
+	key_pattern = Random;
     else
     {
-	if (strcmp(vtype, "num") == 0)
-	{
-	    key_type = KeyNum;
-	    stb_table = st_init_numtable();
-	}
-	else if (strcmp(vtype, "str") == 0)
-	{
-	    key_type = KeyStr;
-	    stb_table = st_init_strtable();
-	}
-	else
-	{
+	usage();
+	rb_raise(rb_eArgError, "%s: unexpected pattern", __func__);
+    }
+
+    if (strcmp(vtype, "num") == 0)
+	key_type = KeyNum;
+    else if (strcmp(vtype, "str") == 0)
+	key_type = KeyStr;
+    else
+    {
+	usage();
+	rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
+    }
+
+    if (ht_size > 0)
+    {
+	switch (key_type) {
+	case KeyNum:
+	    if (ht_size > 0)
+		stb_table = st_init_numtable_with_size(ht_size);
+	    else
+		st_init_numtable();
+	    break;
+	case KeyStr:
+	    if (ht_size > 0)
+		stb_table = st_init_strtable_with_size(ht_size);
+	    else
+		stb_table = st_init_strtable();
+	    break;
+	default:
 	    usage();
 	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
 	}
     }
-
-
 
     return self;
 }
@@ -100,8 +118,39 @@ stbench_init(int argc, VALUE *argv, VALUE self)
 static VALUE
 stbench_init_only(VALUE self)
 {
-    printf("initonly called");
+    elog("initonly called");
     return self;
+}
+
+static int *int_array = NULL;
+
+#define RAND_UPTO(max) (int)rb_random_ulong_limited((rb_cRandom), (max)-1)
+/* XXX: rb_cRandom is valid randgen ?? */
+static void
+fill_array_with_different_values(void)
+{
+    if (!int_array)
+	int_array = xmalloc(sizeof(int) * n_trial);
+
+    for (int i = 0; i < n_trial; i++)
+	int_array[i] = i;
+    for (int i = 0; i < n_trial; i++)
+    {
+	int j = RAND_UPTO(n_trial-i) + i;
+	int tmp = int_array[j];
+	int_array[j] = int_array[i];
+	int_array[i] = tmp;
+    }
+}
+
+static void
+fill_array_with_random_values(void)
+{
+    if (!int_array)
+	int_array = xmalloc(sizeof(int) * n_trial);
+
+    for (int i = 0; i < n_trial; i++)
+	int_array[i] = RAND_UPTO(n_trial);
 }
 
 static VALUE
@@ -110,10 +159,28 @@ stbench_insert(VALUE self)
     switch (key_type)
     {
     case KeyNum:
-	st_insert(stb_table, 123, 456);
+	if (key_pattern == Same)
+	{
+	    fill_array_with_different_values();
+	    for (int i = 0; i < n_trial; i++)
+		st_insert(stb_table, 123, 456);
+	}
+	else if (key_pattern == Different)
+	{
+	    fill_array_with_different_values();
+	    for (int i = 0; i < n_trial; i++)
+		st_insert(stb_table, int_array[i], 456);
+	}
+	else if (key_pattern == Random)
+	{
+	    fill_array_with_random_values();
+	    for (int i = 0; i < n_trial; i++)
+		st_insert(stb_table, int_array[i], 456);
+	}
 	break;
     case KeyStr:
-	st_insert(stb_table, (st_data_t)"aoeusnth", (st_data_t)"htnsueoa");
+	for (int i = 0; i < n_trial; i++)
+	    st_insert(stb_table, (st_data_t)"aoeusnth", (st_data_t)"htnsueoa");
 	break;
     default:
 	rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
@@ -124,13 +191,13 @@ stbench_insert(VALUE self)
 static VALUE
 stbench_delete(VALUE self)
 {
-    printf("delete called");
+    printf("delete called\n");
     return self;
 }
 static VALUE
 stbench_search(VALUE self)
 {
-    printf("search called");
+    printf("search called\n");
     return self;
 }
 
