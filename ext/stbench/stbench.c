@@ -549,6 +549,7 @@ stbench_search_cleanup(VALUE self) {
     assert(stb_table);
     st_free_table(stb_table);
     stb_table = NULL;
+
     return self;
 }
 
@@ -556,30 +557,175 @@ stbench_search_cleanup(VALUE self) {
 typedef struct params_delete_tag
 {
     STBenchKeyType type;
-    long n_trial;
-    long ht_init_size;
+    STBenchPattern pattern;
+    int n_trial;
+    int ht_init_size;
+    int key_len;
 } ParamsDelete;
 static ParamsDelete params_delete;
 
 static void
 stbench_delete_validate_params(void)
 {
+    int acc = 1;
     assert(params_delete.type == KeyTypeNum || params_delete.type == KeyTypeStr);
+    assert(params_delete.pattern == PatternSame ||
+	    params_delete.pattern == PatternDifferent ||
+	    params_delete.pattern == PatternRandom);
     assert(params_delete.n_trial > 0);
     assert(params_delete.ht_init_size >= 0);
+    for (int i = 0; i < params_delete.key_len; i++)
+    {
+	if (acc > INT_MAX/N_OF_CHARS)
+	    return;
+	acc*=N_OF_CHARS;
+    }
+    if (params_delete.n_trial*2 > acc) /* Safety for Different pattern */
+	rb_raise(rb_eArgError, "key_len is too short");
 }
 
 static VALUE
 stbench_delete_setup(int argc, VALUE argv[], VALUE self) {
+    VALUE arg_type, arg_ht_init_size, arg_scale, arg_pattern, arg_key_len;
+
+    assert(running_scenario == STBenchNotSet);
+    running_scenario = STBenchDelete;
+
+    rb_scan_args(argc, argv, "50", &arg_type, &arg_ht_init_size, &arg_scale, &arg_pattern, &arg_key_len);
+
+    Check_Type(arg_type, T_STRING);
+    Check_Type(arg_pattern, T_STRING);
+
+    params_delete = (ParamsDelete) {
+	.type = parse_key_type(rb_string_value_cstr(&arg_type)),
+	.ht_init_size = FIX2INT(arg_ht_init_size),
+	.n_trial = FIX2INT(arg_scale) * SCALE_BASE,
+	.pattern = parse_pattern(rb_string_value_cstr(&arg_pattern)),
+	.key_len = FIX2INT(arg_key_len),
+    };
+
     stbench_delete_validate_params();
+
+    switch (params_delete.type) {
+	case KeyTypeNum:
+	    if (params_delete.ht_init_size > 0)
+		stb_table = st_init_numtable_with_size(params_delete.ht_init_size);
+	    else
+		stb_table = st_init_numtable();
+	    break;
+	case KeyTypeStr:
+	    if (params_delete.ht_init_size > 0)
+		stb_table = st_init_strtable_with_size(params_delete.ht_init_size);
+	    else
+		stb_table = st_init_strtable();
+	    break;
+	default:
+	    rb_raise(rb_eArgError, "%s: unexpected arguments", __func__);
+    }
+
+    switch (params_delete.type) {
+	case KeyTypeNum:
+	    assert(!int_array);
+	    int_array = xmalloc(sizeof(int) * params_delete.n_trial * 2);
+	    if (params_delete.pattern == PatternSame) {
+		fill_int_array_diff(params_delete.n_trial);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, int_array[i], 456);
+		fill_int_array_diff(params_delete.n_trial);
+	    }
+	    else if (params_delete.pattern == PatternDifferent) {
+		fill_int_array_diff(params_delete.n_trial * 2);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, int_array[params_delete.n_trial - 1 - i], 456);
+	    }
+	    else if (params_delete.pattern == PatternRandom) {
+		fill_int_array_diff(params_delete.n_trial * 2);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, int_array[i], 456);
+		fill_int_array_diff(params_delete.n_trial * 2);
+	    }
+	    break;
+	case KeyTypeStr:
+	    assert(!str_array);
+	    str_array = xmalloc(sizeof(char *) * params_delete.n_trial * 2);
+	    for (int i = 0; i < params_delete.n_trial * 2; i++)
+		str_array[i] = xmalloc(sizeof(char) * (params_delete.key_len + 1)); /* +1 for NUL */
+
+	    /* TODO: fake implementation, have to implement different */
+	    fprintf(stderr, "XXX: fake implementation, have to implement fill diff.\n");
+	    if (params_delete.pattern == PatternSame) {
+		fill_str_array_random(params_delete.n_trial, params_delete.key_len);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, (st_data_t)str_array[i], 456);
+		//fill_str_array_random(params_delete.n_trial, params_delete.key_len);
+	    }
+	    else if (params_delete.pattern == PatternDifferent) {
+		/* TODO: fake implementation, have to implement different */
+		fill_str_array_random(params_delete.n_trial * 2, params_delete.key_len);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, (st_data_t)str_array[params_delete.n_trial - 1 - i], 456);
+	    }
+	    else if (params_delete.pattern == PatternRandom) {
+		fill_str_array_random(params_delete.n_trial * 2, params_delete.key_len);
+		for (int i = 0; i < params_delete.n_trial; i++)
+		    st_insert(stb_table, (st_data_t)str_array[i], 456);
+		fill_str_array_random(params_delete.n_trial * 2, params_delete.key_len);
+	    }
+	    break;
+	default:
+	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+	    break;
+    }
+
+    rss_before = get_rss();
+
     return self;
 }
 static VALUE
 stbench_delete_run(VALUE self) {
+    st_data_t ret_value;
+    switch (params_delete.type) {
+	case KeyTypeNum:
+	    for (int i = 0; i < params_delete.n_trial; i++)
+		st_lookup(stb_table, int_array[i], &ret_value);
+	    break;
+	case KeyTypeStr:
+	    for (int i = 0; i < params_delete.n_trial; i++)
+		st_lookup(stb_table, (st_data_t)str_array[i], &ret_value);
+	    break;
+	default:
+	    rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+	    break;
+    }
     return self;
 }
 static VALUE
 stbench_delete_cleanup(VALUE self) {
+    rss_after = get_rss();
+    REPORT_RSS();
+
+    assert(running_scenario == STBenchDelete);
+    running_scenario = STBenchNotSet;
+
+    if (params_delete.type == KeyTypeNum)
+    {
+	assert(int_array);
+	xfree(int_array);
+	int_array = NULL;
+    }
+    else if (params_delete.type == KeyTypeStr)
+    {
+	assert(str_array);
+	xfree(str_array);
+	str_array = NULL;
+    }
+    else
+	rb_raise(rb_eRuntimeError, "%s: unexpected key type", __func__);
+
+    assert(stb_table);
+    st_free_table(stb_table);
+    stb_table = NULL;
+
     return self;
 }
 
