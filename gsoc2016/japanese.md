@@ -6,7 +6,7 @@ parmalink: /japanese/
 
 [English Page]({{site.url}}{{site.baseurl}}/gsoc2016/english)
 
-このページはGoogle Summer of Code(GSoC)2016に採択された提案[Automatic-selection mechanism for data structures in MRI](https://summerofcode.withgoogle.com/projects/#4576418910437376)の成果報告ページです。
+このページは[Google Summer of Code(GSoC)](https://summerofcode.withgoogle.com/)2016に採択された提案[Automatic-selection mechanism for data structures in MRI](https://summerofcode.withgoogle.com/projects/#4576418910437376)の成果報告ページです。
 
 ## 謝辞
 
@@ -15,16 +15,18 @@ parmalink: /japanese/
 
 ## 成果物
 * Rope関連
-  * C言語で実装されたRope拡張ライブラリの実装
-    * <https://github.com/spinute/CRope> (whole repository is for this project)
-  * Rubyの文字列のRopeを使った内部表現の実装
-    * <https://github.com/spinute/Ruby>
+  * [C言語で実装されたRope拡張ライブラリの実装](#rope-extension)
+    * Githubレポジトリ: <https://github.com/spinute/CRope> (whole repository is for this project)
+  * [Rubyの文字列のRopeを使った内部表現の実装](#rope-string)
+    * Githubレポジトリ: <https://github.com/spinute/Ruby>
     * implement-ropestringブランチがこの作業ブランチです
 * その他
-  * RubyのArray, Stringクラスのprepend, concatを多引数化するパッチ
-    * <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
-  * Ruby内部で使われているハッシュテーブルの性能改善パッチの性能評価(作業途中)
-    * <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
+  * [RubyのArray, Stringクラスのprepend, concatを多引数化するパッチ](#issue12333)
+    * Issue: <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
+  * [Ruby内部で使われているハッシュテーブルの性能改善パッチの性能評価(作業途中)](#hashtable)
+    * Githubレポジトリ: <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
+
+<a name="rope"></a>
 
 # Ropeによる文字列の実装
 
@@ -37,9 +39,11 @@ parmalink: /japanese/
 言語処理系における文字列のオブジェクトの実装として、連続したメモリ領域(例えばC言語の配列など)を使って文字列を表現するものがあります。
 Rubyでも現状はこのような実装を採用しています。
 
-他の文字列の実装として、木構造の表現であるRopeというデータ構造があります。(Boehm, Hans-J, Atkinson, Russ, Plass, Michael, 1995)
+他の文字列の実装として、木構造の表現であるRope[https://en.wikipedia.org/wiki/Rope_(data_structure)](Wikipedia)というデータ構造があります。(Boehm, Hans-J, Atkinson, Russ, Plass, Michael; 1995)
 最も単純なレパートリーでは、葉は配列を素朴に使って表現した文字列を、内部ノードは自身を根とする木の葉ノードを左から順に並べた文字列を表現します。
 すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
+
+<img src="image/rope_jp.png" alt="Rope figure" width='100%' height='auto'>
 
 ropeが葉の場合 get-string(node) = nodeの文字列
 そうでない場合 get-string(node) = get-string(nodeの左の子) + get-string(nodeの右の子)
@@ -57,24 +61,31 @@ Rubyのユーザーは多くの場合、Stack/Queue/Listなどのデータ構造
 企画段階では、ArrayクラスまたはStringクラスにおいて木構造やリスト構造の内部表現を実装する選択肢があったのですが、配列よりも文字列の方が結合処理を多数繰り返すアプリケーションが多いのではないかと考え、Stringクラスにおいて実装することを選択しました。(WebサーバーでのHTMLファイルの生成RDocによるドキュメント生成など)
 このプロジェクトではHTMLファイルの生成やドキュメント生成などのRopeにおける結合処理の高速さを意識してStringクラスにRopeのような木構造の内部表現を導入しましたが、ListやGapBufferなど他の内部表現をStringクラスに実装したり、Arrayクラスにおいても同様に他のデータ構造を内部的に切り替えるようにすることも可能だと思います。
 
--------
 Ropeによる文字列表現の効果のひとつとして、Rubyの既存の実装における問題点を例に挙げ説明をします。
 
-Rubyには文字列の結合を行うためのメソッドが+と<<の2種類あります。(concatの実装は<<と同じです)
+Rubyには文字列の結合を行うためのメソッドが+と<<の2種類あります。(concatというものもありますが、この実装は<<と同じです。)
 前者は非破壊的に文字列を結合した結果を返すメソッドであり、後者は破壊的に文字列を結合するメソッドです。
 既存の実装では前者は遅く、<<メソッドを利用することができる場面ではこちらを利用する、というハックがありました。
 このプロジェクトの実装では、+メソッドを利用した際にも<<メソッドを使用した場合と大差ない性能を透過的に得られるようになりました。
 
-これは+メソッドの振る舞いとして、a+bを行うとき、aとbを結合した後の文字列を保持するのに十分なバッファを作成し、そこにa、bの内容をコピーする処理が行われます。
+2つの結合を行うメソッドの内部的な振る舞いを説明します。(実際には、短い文字列はオブジェクトの内部に埋め込まれる最適化がRubyでは行われますが、ここでは簡単のため無視しています)
+
+<img src="image/plus_old_jp.png" alt="How plus works for now" width='100%' height='auto'>
+
++メソッドの振る舞いとして、a+bを行うとき、aとbを結合した後の文字列を保持するのに十分なバッファを作成し、そこにa、bの内容をコピーする処理が毎回行われます。
+
+<img src="image/concat_jp.png" alt="How concat works" width='100%' height='auto'>
+
 一方で<<メソッドでは、a << bを行うときaの持つバッファにbをコピーします。この際にaが十分なバッファを持っている場合にはbだけがコピーされ、aのバッファが足りない時に限り新たに拡張したバッファを確保し、そこにaとbをコピーする、という処理を行います。
 
 そのため、+では呼び出し回数だけa,bが共にコピーされ、また常に新たなオブジェクトが生成されているのに対して、<<においてはオブジェクトの生成とaのコピーはバッファが不足するときのみ発生することになります。
 バッファの拡張は指数的に行われるため、例えばある文字列を繰り返し末尾に連結する処理におけるコピーされる文字列の量を考えると、+では最終文字列長の二乗オーダーである一方で、<<では高々3倍程度とオーダーレベルで差があります。
 
-例.(実際には、短い文字列はオブジェクトの内部に埋め込まれる最適化がRubyでは行われますが、ここでは無視しています)
-
 
 ここで、Ropeにおける+演算の説明を行います。
+
+<img src="image/plus_rope_jp.png" alt="How rope works" width='100%' height='auto'>
+
 今回の実装ではRopeはimmutableなデータ構造として実装しました。
 Ropeは結合演算の結果を遅延評価するデータ構造と考える事ができます。
 +操作自体は2つのノードを指すポインタを保持するだけなので定数時間で実行できます。
@@ -92,6 +103,8 @@ C言語などのより低レベルな言語ではユーザーはデータ構造�
 例えば、RubyにはListが言語のコアに含まれていません。Rubyのユーザーは基本的にArrayをlist, stack, queueの代わりに多くのオペレーションを備えたarrayを使います。
 しかしながら、用途に応じて真に効率的なデータ構造が異なるのも事実です。
 このプロジェクトでは、Rubyのこのような特徴を尊重しながら、ユーザーに効率的なデータ処理を提供することを目指しました。
+
+<a name='rope-extension'></a>
 
 ## C言語で実装されたRope拡張ライブラリ
 
@@ -112,6 +125,7 @@ TODO: ちゃんと書く
 参照カウントGCを自力で行う選択をしたことにより、文字列の結合や削除を行う際に木の内部の全てのノードの参照カウントを増減する必要が出てしまい、計算量的には結合O(n)、削除O(n)となってしまっている点は改善点です。
 しかしながら、参照カウントの操作を行わないようにすると(実際にはメモリリークしているものの)理論通りの性能が出ることが確認でき、Ruby処理系に組み込む際にはRubyのGCを使いこの問題は解決されるため、ここではこの問題は放置することにしました。
 
+<a name="issue12333"></a>
 
 ## issue12333を実装したパッチの投稿
 GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、Rubyソースコード完全解説(http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
@@ -129,6 +143,8 @@ str.concat(str, str)
 いずれのパッチも実装し、 7月のRuby開発者会議の際に開発者のみなさまにご意見を頂いたところ、前者が自然でいいだろう、とのご意見をいただきました。
 
 また、コーディングスタイルについていくつかご指摘を頂いたので、その点を修正したパッチを投稿しました。
+
+<a name='rope-string'></a>
 
 ## Ruby文字列実装のRope対応
 今回のプロジェクトの中心となる成果として、Ruby処理系における組み込みStringクラスを修正し、文字列の内部的な表現としてRopeを使うものを実装しました。
@@ -168,13 +184,17 @@ Rubyでのこれまでの選択は、配列を使い、リストは提供しな�
 
 また、他にも、文字列の繰り返し(String#*)なども同様の方法で遅延が可能です。
 str*10000などをすると、既存の実装ではこの処理の実行時にstrの10000倍の長さを持つ配列が確保されることになるのですが、Ropeでは結果の文字列を実際に配列として使うまで、配列を確保しません。
-また、配列全体を使わない場合には一部分だけを作成します。(Capitalizeや[]によるindexingなど)
 この最適化は実装したのですが、実際に頻繁に役に立つケースかは疑問です。
+
+具体的にはまた、配列全体を使わない場合には一部分だけを作成します。(Capitalizeや[]によるindexingなど)
 
 TODO: 実験結果の掲載とその評価
 
+<a name='hashtable'></a>
+
 ## Rubyの内部で使用されているHashtableの実装の改良issueのマージ対応
-https://github.com/spinute/ruby/tree/stbench/ext/stbench
+
+<https://github.com/spinute/ruby/tree/stbench/ext/stbench>
 
 このプロジェクトの最後の1週間ほどで、https://bugs.ruby-lang.org/issues/12142 の評価を行うことを試みました。
 
@@ -195,19 +215,23 @@ Cで記述したシナリオをRubyレベルで渡したパラメータで選び
 
 ベンチマークを実行するプログラムの例としては以下のようになります。(bench.rbに小さなベンチマークを一通りの組み合わせに対して実行するプログラムが記述してあります。)
 
-keytype = ’num’; ht_init_size=0, scale=10; pattern=‘rand'
+```ruby
+keytype = ’num’; ht_init_size=0, scale=10; pattern=‘ra  #set params
 pid = Process.fork do
-    bench = STBench.new
-    bench.search_setup keytype, ht_init_size, scale, pattern
-    puts Benchmark.measure { bench.search_run }
-    	bench.search_cleanup
-    end
+  bench = STBench.new
+  bench.search_setup keytype, ht_init_size, scale, pattern
+  puts Benchmark.measure { bench.search_run }
+    bench.search_cleanup
+  end
 Process.waitpid pid
+```
 
 下のような結果が出ます。(一行目がパラメータ->キーが整数、キーはランダム、10 * 00000回、挿入する、テーブルの初期サイズは未指定、で二行目が実行時間、三行目がr_usageから取ったMaxRSS(初期化完了時、ベンチマーク完了後、それらの増分)です。)
 
+<pre>
 Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keylen=5
   0.890000   0.040000   0.930000 (  0.933727)
   before:    4730880, after:   39747584, diff  35016704
+</pre>
 
 forearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、その評価を行うのは今後の課題です。
