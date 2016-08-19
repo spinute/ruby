@@ -22,6 +22,7 @@ I also would like to thank those who manage Google Summer of Code for offering s
 * Implement patches for Ruby core which enables concat and prepend methods in Array and String class to take multiple arguments
   * <https://bugs.ruby-lang.org/issues/12333> (3 patches are posted)
 * Merge a well-tuned hashtable into Ruby core (in progress)
+ * <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
 
 ## Introduction
 Note: There are several implementations of Ruby language e.g. MRI(Matz Ruby Interpreter, written in C), JRuby(in Java), Rubynius(in C++ and Ruby itself) ...etc. In this report, I have written Ruby as MRI.
