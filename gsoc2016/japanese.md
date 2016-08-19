@@ -14,7 +14,7 @@ parmalink: /japanese/
 また、Google Summer of Codeの実施に携わるみなさまにも、僕を含む多くの学生にこのような貴重な場を提供していただけたこと、感謝しています。
 
 ## 成果物
-* Rope関連
+* [Rope関連](#rope)
   * [C言語で実装されたRope拡張ライブラリの実装](#rope-extension)
     * Githubレポジトリ: <https://github.com/spinute/CRope> (whole repository is for this project)
   * [Rubyの文字列のRopeを使った内部表現の実装](#rope-string)
@@ -28,7 +28,9 @@ parmalink: /japanese/
 
 <a name="rope"></a>
 
-# Ropeによる文字列の実装
+# データ構造Ropeを使った文字列の実装
+
+このプロジェクトの中心となるRubyの文字列クラスへの木構造表現の実装とその動的/自動的な切り替えの話を記述します。
 
 ## はじめに
 
@@ -40,15 +42,16 @@ parmalink: /japanese/
 Rubyでも現状はこのような実装を採用しています。
 
 他の文字列の実装として、木構造の表現であるRope[https://en.wikipedia.org/wiki/Rope_(data_structure)](Wikipedia)というデータ構造があります。(Boehm, Hans-J, Atkinson, Russ, Plass, Michael; 1995)
-最も単純なレパートリーでは、葉は配列を素朴に使って表現した文字列を、内部ノードは自身を根とする木の葉ノードを左から順に並べた文字列を表現します。
-すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
+最も単純なレパートリーでは、木構造は二分木とし、葉は配列を素朴に使って表現した文字列を、内部ノードは自身を根とする木の葉ノードを左から順に並べた文字列を表現します。
 
 <img src="image/rope_jp.png" alt="Rope figure" width='100%' height='auto'>
 
-ropeが葉の場合 get-string(node) = nodeの文字列
-そうでない場合 get-string(node) = get-string(nodeの左の子) + get-string(nodeの右の子)
+すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
 
-このデータ構造では文字列の削除や結合、部分文字列の取得などの操作を効率的に行うことができます。
+* ropeが葉の場合 get-string(node) = nodeの文字列
+* そうでない場合 get-string(node) = get-string(nodeの左の子) + get-string(nodeの右の子)
+
+このデータ構造では文字列の削除や結合、部分文字列の取得などの操作を配列による文字列表現の場合と比較して効率的に行うことができます。
 このようにデータ構造には、それぞれ優位な操作がありますが、Rubyの処理系はユーザーに多様なデータ構造を使い分けることを課すデザインになっていません。
 これは最も素朴のうちのひとつデータ構造であるListがRubyには用意されていないことからもわかります。
 Rubyのユーザーは多くの場合、Stack/Queue/Listなどのデータ構造の処理を、多用なメソッドを備えたArrayによって達成します。
@@ -125,25 +128,6 @@ TODO: ちゃんと書く
 参照カウントGCを自力で行う選択をしたことにより、文字列の結合や削除を行う際に木の内部の全てのノードの参照カウントを増減する必要が出てしまい、計算量的には結合O(n)、削除O(n)となってしまっている点は改善点です。
 しかしながら、参照カウントの操作を行わないようにすると(実際にはメモリリークしているものの)理論通りの性能が出ることが確認でき、Ruby処理系に組み込む際にはRubyのGCを使いこの問題は解決されるため、ここではこの問題は放置することにしました。
 
-<a name="issue12333"></a>
-
-## issue12333を実装したパッチの投稿
-GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、Rubyソースコード完全解説(http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
-また、オンラインにある開発者向けドキュメントとして、[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通していました。
-
-その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものを選定し、仕様を議論しながら実装を何種類か投稿しました。
-
-議論の内容としましては、結合処理の際に、自身を引数に取るような実行をどのように処理するのが整合的な振るまいか、という点です。
-
-str = "a"
-str.concat(str, str)
-
-のようなプログラムを実行した際に、strは最終的に"aaa"となるべきか、あるいは"aaaa"になるべきか、というものです。
-おそらくプログラムの意図としては前者が自然なのではないかと思うのですが、後者にはstr.(str); str(str)というように二度メソッドを呼んだときの結果と一致する、という意味では整合性があります。
-いずれのパッチも実装し、 7月のRuby開発者会議の際に開発者のみなさまにご意見を頂いたところ、前者が自然でいいだろう、とのご意見をいただきました。
-
-また、コーディングスタイルについていくつかご指摘を頂いたので、その点を修正したパッチを投稿しました。
-
 <a name='rope-string'></a>
 
 ## Ruby文字列実装のRope対応
@@ -190,6 +174,27 @@ str*10000などをすると、既存の実装ではこの処理の実行時にst
 
 TODO: 実験結果の掲載とその評価
 
+<a name="issue12333"></a>
+
+# issue12333を実装したパッチの投稿
+GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、Rubyソースコード完全解説(http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
+また、オンラインにある開発者向けドキュメントとして、[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通していました。
+
+その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものとして<https://bugs.ruby-lang.org/issues/12333>を選定し、仕様を議論しながら実装を何種類か投稿しました。
+
+一考する余地のあった点としては、結合処理の際に、自身を引数に取るような実行をどのように処理するのが整合的な振るまいか、という点です。
+
+```ruby
+str = "a"
+str.concat(str, str)
+```
+
+のようなプログラムを実行した際に、strは最終的に"aaa"となるべきか、あるいは"aaaa"になるべきか、というものです。
+おそらくプログラムの意図としては前者が自然なのではないかと思うのですが、後者にはstr.(str); str(str)というように二度メソッドを呼んだときの結果と一致する、という意味では整合性があります。
+いずれのパッチも実装し、 7月のRuby開発者会議の際に開発者のみなさまにご意見を頂いたところ、前者が自然でいいだろう、とのご意見をいただきました。
+
+また、コーディングスタイルについていくつかご指摘を頂いたので、その点を修正したパッチも再度投稿しました。
+
 <a name='hashtable'></a>
 
 ## Rubyの内部で使用されているHashtableの実装の改良issueのマージ対応
@@ -199,9 +204,14 @@ TODO: 実験結果の掲載とその評価
 このプロジェクトの最後の1週間ほどで、https://bugs.ruby-lang.org/issues/12142 の評価を行うことを試みました。
 
 このissueでは、Rubyのhasttableの実装を改良しようという提案です。
-Vladimir Makarov氏がopen addressingを使った実装を公開し、議論を行う中で、Yura Sokolov氏がopen addressingを利用せずに近い性能を出す別の実装を公開し、2つの実装と既存の実装との評価比較が待たれている状態です。
+Vladimir Makarov氏がopen addressingを使った実装を公開し、議論を行う中で、Yura Sokolov氏がopen addressingを利用せずに先の実装に近い性能を出す別の実装を公開し、2つの実装と既存の実装との評価比較が待たれている状態です。
+両者とも数ヶ月の議論を経て実装が洗練されてきており、Rubyへのマージされることになれば価値の高い案件であると思い、最後の1週間でこのissueのマージ作業に貢献できるのではないかと考え、この作業に取り組むことにしました。
 
-Cで記述したシナリオをRubyレベルで渡したパラメータで選び、ベンチマークの実行はCの関数で完結するように書いてあります。
+Rubyに付属するベンチマークに既にいくつかの処理がRubyで記述されていますが、ハッシュテーブルレベルでの単一の操作の性能評価をするベンチマークを書くことで、より定量的な比較が可能になるのではないかという狙いでこのベンチマークを実装することに決めました。
+
+実装としては、Rubyの拡張ライブラリとしてベンチマークを行うためのダミーのクラスを作り、そこからCで記述したシナリオをRubyレベルで渡したパラメータで選び、ベンチマークの実行はCの関数で完結するように書いてあります。ちなみに拡張ライブラリとして記述することにしたのは、Rubyのソースコードと結合のあるRubyのハッシュテーブルのコード(st.c)のビルドを簡単に行うためです。
+
+現状の機能としましては、
 
 * 処理回数
 * テーブルの初期サイズ
@@ -216,7 +226,7 @@ Cで記述したシナリオをRubyレベルで渡したパラメータで選び
 ベンチマークを実行するプログラムの例としては以下のようになります。(bench.rbに小さなベンチマークを一通りの組み合わせに対して実行するプログラムが記述してあります。)
 
 ```ruby
-keytype = ’num’; ht_init_size=0, scale=10; pattern=‘ra  #set params
+keytype='num'; ht_init_size=0, scale=10; patter='rand'
 pid = Process.fork do
   bench = STBench.new
   bench.search_setup keytype, ht_init_size, scale, pattern
@@ -234,4 +244,4 @@ Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keyle
   before:    4730880, after:   39747584, diff  35016704
 </pre>
 
-forearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、その評価を行うのは今後の課題です。
+ハッシュテーブルのAPIに含まれているforearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、その評価を行うのは今後の課題です。
