@@ -23,7 +23,7 @@ parmalink: /japanese/
 * その他
   * [RubyのArray, Stringクラスのprepend, concatを多引数化するパッチ](#issue12333)
     * Issue: <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
-  * [Ruby内部で使われているハッシュテーブルの性能改善パッチの性能評価(作業途中)](#hashtable)
+  * [Ruby内部で使われているハッシュテーブルの改良提案の性能評価(作業途中)](#hashtable)
     * Githubレポジトリ: <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
 
 <a name="rope"></a>
@@ -177,7 +177,7 @@ TODO: 実験結果の掲載とその評価
 <a name="issue12333"></a>
 
 # issue12333を実装したパッチの投稿
-GSoCには実際にプロジェクトが始まる前の準備期間が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、Rubyソースコード完全解説(http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
+GSoCには実際にプロジェクトが始まる前の準備期間(community bounding periodと呼ばれています)が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、[Rubyソースコード完全解説](http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
 また、オンラインにある開発者向けドキュメントとして、[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通していました。
 
 その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものとして<https://bugs.ruby-lang.org/issues/12333>を選定し、仕様を議論しながら実装を何種類か投稿しました。
@@ -197,21 +197,25 @@ str.concat(str, str)
 
 <a name='hashtable'></a>
 
-## Rubyの内部で使用されているHashtableの実装の改良issueのマージ対応
+## Rubyの内部で使用されているハッシュテーブルの実装の改良提案のベンチマーク実装
 
 <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
 
-このプロジェクトの最後の1週間ほどで、https://bugs.ruby-lang.org/issues/12142 の評価を行うことを試みました。
+このプロジェクト期間の最後の1週間ほどで、<https://bugs.ruby-lang.org/issues/12142>の追加評価を試みました。
 
-このissueでは、Rubyのhasttableの実装を改良しようという提案です。
-Vladimir Makarov氏がopen addressingを使った実装を公開し、議論を行う中で、Yura Sokolov氏がopen addressingを利用せずに先の実装に近い性能を出す別の実装を公開し、2つの実装と既存の実装との評価比較が待たれている状態です。
-両者とも数ヶ月の議論を経て実装が洗練されてきており、Rubyへのマージされることになれば価値の高い案件であると思い、最後の1週間でこのissueのマージ作業に貢献できるのではないかと考え、この作業に取り組むことにしました。
+このissueは、RubyのHashクラスに加え、内部実装でも利用されているハッシュテーブルを改良しようという提案です。
+まず、Vladimir Makarov氏がOpen Addressingを使った実装を公開し、議論を行う中で、Yura Sokolov氏がopen addressingを利用せずに先の実装に近い性能を出す別の実装を公開しており、2つの実装と既存の実装との評価比較が待たれている状態です。
+両者とも数ヶ月の議論を経て実装が洗練されてきており、Rubyへのマージされる意義の高い提案だと考え、最後の1週間でこの作業に取り組むことにしました。
 
-Rubyに付属するベンチマークに既にいくつかの処理がRubyで記述されていますが、ハッシュテーブルレベルでの単一の操作の性能評価をするベンチマークを書くことで、より定量的な比較が可能になるのではないかという狙いでこのベンチマークを実装することに決めました。
+現在、Rubyに付属するベンチマークに既にいくつかの処理がRubyでいくつかシナリオが記述されており、両実装のこの結果は既に投稿されています。
+これに加え、ハッシュテーブル自体の単一の操作の性能評価をするベンチマークを書くと、より定量的な評価に基づく議論が可能になるのではないかということで、このベンチマークを実装することにしました。
 
-実装としては、Rubyの拡張ライブラリとしてベンチマークを行うためのダミーのクラスを作り、そこからCで記述したシナリオをRubyレベルで渡したパラメータで選び、ベンチマークの実行はCの関数で完結するように書いてあります。ちなみに拡張ライブラリとして記述することにしたのは、Rubyのソースコードと結合のあるRubyのハッシュテーブルのコード(st.c)のビルドを簡単に行うためです。
+実装としては、Rubyの拡張ライブラリとしてベンチマークを行うためクラスを作り、そこからCで記述したシナリオをRubyレベルで渡したパラメータで選び、ベンチマークの実行はCの関数で完結するように書いてあります。ちなみに拡張ライブラリとして実装することにしたのは、Rubyのソースコードと結合のあるRubyのハッシュテーブルのコード(st.c)のビルドを簡単に行うためです。
 
-現状の機能としましては、
+<https://github.com/spinute/ruby/blob/stbench/ext/stbench/stbench.c>にSTBenchクラスの実装が記述されています。
+全てのベンチマークは~_setup -> ~_run -> ~_cleanupという3段階の処理で実装されており、この順で実行されることを想定しています。(使い方の例は後述します。)
+
+現状の機能としては、
 
 * 処理回数
 * テーブルの初期サイズ
@@ -221,22 +225,25 @@ Rubyに付属するベンチマークに既にいくつかの処理がRubyで記
 
 の組み合わせについてベンチマークを実行できるようにしました。
 
-現在は実行時間と、ベンチマーク前後のmaxRSSを取っています。
+計測しているのは実行時間と、ベンチマーク前後のMax RSSです。
 
-ベンチマークを実行するプログラムの例としては以下のようになります。(bench.rbに小さなベンチマークを一通りの組み合わせに対して実行するプログラムが記述してあります。)
+ベンチマークを実行するプログラムの例は以下のようになります。
 
 ```ruby
+# Set benchmark parameter
 keytype='num'; ht_init_size=0, scale=10; patter='rand'
+
+# Fork a process to measure memory usage separately
 pid = Process.fork do
   bench = STBench.new
   bench.search_setup keytype, ht_init_size, scale, pattern
   puts Benchmark.measure { bench.search_run }
-    bench.search_cleanup
-  end
+  bench.search_cleanup
+end
 Process.waitpid pid
 ```
 
-下のような結果が出ます。(一行目がパラメータ->キーが整数、キーはランダム、10 * 00000回、挿入する、テーブルの初期サイズは未指定、で二行目が実行時間、三行目がr_usageから取ったMaxRSS(初期化完了時、ベンチマーク完了後、それらの増分)です。)
+下のような結果が出ます。
 
 <pre>
 Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keylen=5
@@ -244,4 +251,16 @@ Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keyle
   before:    4730880, after:   39747584, diff  35016704
 </pre>
 
-ハッシュテーブルのAPIに含まれているforearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、その評価を行うのは今後の課題です。
+ベンチマーク結果の読み方は、一行目がパラメータで
+
+* キーは整数でランダムに生成
+* 10 * 00000回挿入を行う
+* テーブルの初期サイズは未指定
+
+二行目が実行時間です。(Rubyレベルでbenchmarkライブラリを使って計測しています。)
+
+三行目がgetrusage(2)で取得したMax RSS(初期化完了時、ベンチマーク完了後、その差分)です。
+
+<https://github.com/spinute/ruby/blob/stbench/ext/stbench/bench.rb>ベンチマークを一通りのパラメータの組み合わせに対して実行するサンプルプログラムが記述してあります。
+
+ハッシュテーブルのAPIに含まれているforearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、実装者達の意見を伺いながら評価に必要な項目を追加するのは今後の課題です。
