@@ -262,4 +262,4 @@ Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keyle
 
 <https://github.com/spinute/ruby/blob/stbench/ext/stbench/bench.rb>ベンチマークを一通りのパラメータの組み合わせに対して実行するサンプルプログラムが記述してあります。
 
-ハッシュテーブルのAPIに含まれているforearch系の関数に対してのシナリオを記述し、各パッチと既存の実装とのベンチマークを取り、実装者達の意見を伺いながら評価に必要な項目を追加するのは今後の課題です。
+ハッシュテーブルのAPIに含まれているforearch系の関数に対してのベンチマークも実装し、各パッチと既存の実装とのベンチマークを取り、実装者達の意見を伺いながら評価に必要な項目を追加するのは今後の課題です。
