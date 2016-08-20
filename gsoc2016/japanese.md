@@ -177,8 +177,7 @@ TODO: 実験結果の掲載とその評価
 <a name="issue12333"></a>
 
 # issue12333を実装したパッチの投稿
-GSoCには実際にプロジェクトが始まる前の準備期間(community bounding periodと呼ばれています)が1ヶ月ほどあり、この期間に僕はまずRubyの開発者向けドキュメントを読み、[Rubyソースコード完全解説](http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの内部実装を解説する二冊の書籍に目を通したり、Ruby under the micro scopeの著者Patのブログを読んだりしていました。
-また、オンラインにある開発者向けドキュメントとして、[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通していました。
+GSoCには実際にプロジェクトが始まる前の準備期間(community bounding periodと呼ばれています)が1ヶ月ほどあり、この期間に[Rubyソースコード完全解説](http://i.loveruby.net/ja/rhg/book/), [Rubyのしくみ Ruby Under a Microscope](http://tatsu-zine.com/books/ruby-under-a-microscope-ja)というRubyの実装を解説する二冊の文書に目を通しました。 また、開発者向けドキュメント[Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Issue Tracking System](https://bugs.ruby-lang.org/projects/ruby/wiki/)などにも目を通しました。
 
 その後、Rubyの実装に実際に修正を加える体験をしてみようということで、RubyのIssueトラッカーに投稿されたissueの中から今回の対象範囲(String/Array/Hash)に関連のありそうなもので、かつ修正の方法の目処がつくものとして<https://bugs.ruby-lang.org/issues/12333>を選定し、仕様を議論しながら実装を何種類か投稿しました。
 
@@ -190,7 +189,7 @@ str.concat(str, str)
 ```
 
 のようなプログラムを実行した際に、strは最終的に"aaa"となるべきか、あるいは"aaaa"になるべきか、というものです。
-おそらくプログラムの意図としては前者が自然なのではないかと思うのですが、後者にはstr.(str); str(str)というように二度メソッドを呼んだときの結果と一致する、という意味では整合性があります。
+おそらくプログラムの意図としては前者が自然なのではないかと思うのですが、後者には`str.(str); str(str)`というように二度メソッドを呼んだときの結果と一致する、という意味では整合性があります。
 いずれのパッチも実装し、 7月のRuby開発者会議の際に開発者のみなさまにご意見を頂いたところ、前者が自然でいいだろう、とのご意見をいただきました。
 
 また、コーディングスタイルについていくつかご指摘を頂いたので、その点を修正したパッチも再度投稿しました。
@@ -251,9 +250,9 @@ Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keyle
   before:    4730880, after:   39747584, diff  35016704
 </pre>
 
-ベンチマーク結果の読み方は、一行目がパラメータで
+ベンチマーク結果の読み方は、一行目がパラメータで以下の
 
-* キーは整数でランダムに生成
+* キーは整数でランダムに生成する
 * 10 * 00000回挿入を行う
 * テーブルの初期サイズは未指定
 
