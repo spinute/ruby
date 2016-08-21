@@ -180,7 +180,59 @@ Ropeの利点を活かすために以下のような最適化を実装しまし�
 
 ### 性能評価
 
-TODO: 性能評価の記述
+実験のパラメータはグラフのタイトルに埋め込んであります。
+
+* size: 実験のスケール
+* len: 結合する文字列の長さ
+* trial: 試行回数
+
+左の列がtrunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec)での計測結果、右の列がこのプロジェクトの計測結果です。
+
+#### 文字列を倍々にする
+
+```ruby
+# String(concat)
+e = String.new "a"*len
+x.times { e << e }
+
+# String(plus)
+e = String.new "a"*len
+x.times { e += e }
+```
+
+<a href="image/double_concat_trunk_only.png"><img src="image/double_concat_trunk_only.png" alt="experiment: double trunk stirng" width='45%' height='auto'></a>
+<a href="image/double_concat_rope_only.png"><img src="image/double_concat_rope_only.png" alt="experiment: double rope stirng" width='45%' height='auto'></a>
+
+Ropeの結果(右のグラフの緑色の結果)を比較すると他の結果と比べて極めて小さな時間で実行できているのがわかると思います。
+これはRopeの結合処理では文字列の参照を取得するだけであるのに対して、trunkの実装では結合字に結果文字列を実際に作成しているためです。
+
+続いては、上の処理に加えて、結合後の文字列に対して配列文字列を必要とする処理を実行するベンチマークです。
+
+```ruby
+# String(concat)
+e = String.new "a"*len
+x.times { e << e }
+e.inspect
+
+# String(plus)
+e = String.new "a"*len
+x.times { e += e }
+e.inspect
+```
+
+<a href="image/double_concat_trunk.png"><img src="image/double_concat_trunk.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/double_concat_rope.png"><img src="image/double_concat_rope.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+
+この結果を見てみると、先の実験ではRopeの結合処理が高速であった点が、この実験結果では隠れていることがわかるかと思います。
+
+#### 一定の長さの文字列を末尾に結合していく
+
+<a href="image/append_concat_rope1.png"><img src="image/append_concat_rope1.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk1.png"><img src="image/append_concat_trunk1.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope2.png"><img src="image/append_concat_rope2.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk2.png"><img src="image/append_concat_trunk2.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope3.png"><img src="image/append_concat_rope3.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk3.png"><img src="image/append_concat_trunk3.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
 
 ### まとめと課題
 Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処理系のStringクラスに実装しました。
