@@ -191,6 +191,7 @@ Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処
 実際のアプリケーションの中で、大きなRope文字列に対して適用されることの多いメソッド調査し、その効率的なRope実装が可能であれば行うことは最適化の可能性としてやり残されています。
 
 残された問題点としてテストケース(make test-all)のうち、以下のものがまだ安定して通過していません。([implement_ropeブランチ: 250deede](https://github.com/spinute/ruby/commit/250deedef4bf253238f53559db26cd9c4793b6ec), OSX 10.9.5にて実行)
+
 * TestSocket_UDPSocket#test_send_no_memory_leak(test/socket/test_udp.rb:94)
 * TestProcess#test_deadlock_by_signal_at_forking(test/test_process.rb:2103)
 * test/rss
