@@ -111,7 +111,7 @@ I used CData type which wrap C structure as Ruby object. The members of Rope str
 This implementation offers functions seen in <https://github.com/spinute/CRope/blob/master/ext/rope/rope.h>.
 As basic string operations, concatenation, substring, indexing, deletion, and iteration over string are supported. RopeToString is prepared in order to obtain array string from rope string.
 
-I implemented Rope by *NOT* using Garbage Collector in Ruby core but by using reference count which I prepared by myself for simplicity, as this implementation is prototyping.
+I implemented Rope by **NOT** using Garbage Collector in Ruby core but by using reference count which I prepared by myself for simplicity, as this implementation is prototyping.
 However, reference counting visits all the nodes in a tree when calling concat or delete methods, and hence these methods become slower than that of ideal time complexity of Rope data structure.
 The purpose of prototyping is to ensure the possibility of the project, and I succeeded to evaluate the performance of the ideal implementation of Rope by turning off the reference counting, meaning this extension includes memory leaks for accomplishing ideal performance, and it is the reason why I did not provide its extension as RubyGem (Package Management System for Ruby Language).
 I decided to leave this problem because I tried implementing Rope string into Ruby interpreter itself and the problem automatically vanished by using Garbage Collector in Ruby.
@@ -272,10 +272,21 @@ Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処
 TODO: merge japanese.md
 
 During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/) and ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/).
+
 After that I selected an issue posted in [Bug Tracker System of Ruby](https://bugs.ruby-lang.org/issues) at the perspective of having relations with the topic in this project without going too complicated.
 I selected this issue [\"String#concat, Array#concat, String#prepend to take multiple arguments\"](https://bugs.ruby-lang.org/issues/12333) as my first activity diving into Ruby internal , and implemented a feature that enables methods such as concat and prepend in Array and String to have multiple arguments.
-I discussed some details and possible implementations in the page, and posted 3 patches.
-I also reported this implementation in a developer's meeting in July, and received some feedbacks about implementation from Ruby committers and a positive response for this feature from Matz.
+
+The point of discussion in the thread above is how a string behaves in the case where concat some self. An example is the code below.
+
+```ruby
+str = "a"
+str.concat(str, str)
+```
+
+After running this program, should str become "aaa" or "aaaa"?
+It may be natural to be "aaa" by reading the code as "concat str twice into str", however, it is also reasonable to keep the behavior equal to two consecutive calls of `str.concat(str)`.
+
+I implemented patches for both behaviors, and reported this implementation in a developer's meeting in July and received some feedbacks about implementation from Ruby committers, and got a positive response for this feature from Matz.
 
 <a name='hashtable'></a>
 
