@@ -16,7 +16,8 @@ parmalink: /japanese/
 ## 成果物
 * [Rope関連](#rope)
   * [C言語で実装されたRope拡張ライブラリの実装](#rope-extension)
-    * Githubレポジトリ: <https://github.com/spinute/CRope> (whole repository is for this project)
+    * Githubレポジトリ: <https://github.com/spinute/CRope>
+    * このプロジェクトの一環として作られたレポジトリです
   * [Rubyの文字列のRopeを使った内部表現の実装](#rope-string)
     * Githubレポジトリ: <https://github.com/spinute/ruby/tree/implement_ropestring>
     * implement-ropestringブランチがこの作業ブランチです
@@ -25,14 +26,16 @@ parmalink: /japanese/
     * Issue: <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
   * [Rubyのハッシュテーブルの改良提案の評価のためのベンチマーク実装(作業途中)](#hashtable)
     * Githubレポジトリ: <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
+    * このプロジェクトの一環として作られたレポジトリです
 
-<a name="rope"></a>
 
 ## はじめに
 
 このページでは、RubyというとRuby処理系のうちのひとつであるMRI(Matz Ruby Interpreter)のことを指します。
 他の有名な処理系実装の例として、Javaによる実装であるJRubyや、C++によりVMを実装しその他の大部分をRubyによって実装しているRubiniusなどがあります。
 これらの処理系についてはMRIと共通する部分も多いと思うのですが、必ずしもそうではないことにはご注意ください。
+
+<a name="rope"></a>
 
 ## データ構造Ropeを使った文字列の実装
 
