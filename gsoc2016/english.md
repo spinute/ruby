@@ -18,27 +18,44 @@ I also would like to thank those who manage Google Summer of Code for offering s
   * [Implement Ruby Rope C extension and experimental automatic selection class](#rope-extension)
     * Github: <https://github.com/spinute/CRope>
     * Whole repository is for this project
-  * Implement Rope into Ruby-Core and its automatic selection for String class
+  * [Implement Rope into Ruby-Core and its automatic selection for String class](#rope-string)
     * <https://github.com/spinute/ruby/tree/implement_ropestring>
     * "implement-ropestring" branch is for this section of the project
-* Implement patches for Ruby core which enables concat and prepend methods in Array and String class to take multiple arguments
-  * <https://bugs.ruby-lang.org/issues/12333> (3 patches are posted)
-* Merge a well-tuned hashtable into Ruby core (in progress)
-  * <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
-  * Whole repository is for this project
+* Other works
+  * [Implement patches for Ruby core which enables concat and prepend methods in Array and String class to take multiple arguments](issue12333)
+    * <https://bugs.ruby-lang.org/issues/12333> (3 patches are posted)
+  * [Merge a well-tuned hashtable into Ruby core (in progress)](#hashtable)
+    * <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
+    * Whole repository is for this project
 
 
 ## Introduction
-TODO: merge japanese.md
-Note: There are several implementations of Ruby language e.g. MRI(Matz Ruby Interpreter, written in C), JRuby(in Java), Rubynius(in C++ and Ruby itself) ...etc. In this report, I have written Ruby as MRI.
+
+Note: In this report, I have written Ruby as MRI(Matz Ruby Interpreter), though there are several  other implementations such as JRuby(written in Java), Rubynius(in C++ and Ruby itself) ...etc.
+There may be a lot of similarities through these implementations, however, it is not always the case.
 
 <a name="rope"></a>
 
 ## Rope String
-TODO: merge japanese.md
 
+Here is the central of this project on the implementation Rope, and dynamic and automated selection of data structure in Ruby string.
+
+## Background
 Classical implementation of string object in programming language is a sequential buffer such as array in C language, and Ruby has also adopted such a structure for string.
-Rope is another data structure for string object, which expresses a given string in a tree structure.
+
+<a href="image/array_string.png"> <img src="image/array_string.png" alt="string in array structure" width='100%' height='auto'> </a>
+
+Rope[https://en.wikipedia.org/wiki/Rope_(data_structure)](Wikipedia) is another data structure for string object, which expresses a given string in a tree structure.(Boehm, Hans-J, Atkinson, Russ, Plass, Michael; 1995)
+
+In the most populer implementation, tree in Rope is binary, and the leaves are just array strings, and internal nodes present strings which enumerate from left to right all the leaves of a subtree whose root is the internal node.
+
+<a href="image/rope.png"> <img src="image/rope.png" alt="Rope figure" width='100%' height='auto'> </a>
+
+It is possible to convert Rope string into array string by following pseudo-equations.
+
+* When node is a leaf: get-string(node) = string of node
+* Else: get-string(node) = get-string(left child of node) + get-string(right child of node)
+
 Rope surpasses array-expression in some basic operations especially in the meaning of time complexity, e.g. concatenation, deletion and substring.
 
 My main challenge in Google Summer of Code 2016 (GSoC2016) is to introduce Rope into Ruby and enable users to enjoy its efficiency unconsciously.
@@ -47,69 +64,43 @@ However, that is not the approach Ruby has selected.
 Ruby users tend to use a few data structures prepared in the language and they usually do not want to dive into the depth of selecting proper data structures for efficiency.
 In this way, Ruby provides users with productivity and the joy of programming, and I have contributed to that virtue by offering automatic data structure selection mechanism which enables users to use efficient data structures transparently.
 
-## Background
-言語処理系における文字列のオブジェクトの実装として、連続したメモリ領域(例えばC言語の配列など)を使って文字列を表現するものがあります。
-Rubyでも現状の文字列の実装はこれを採用しています。
+Being aware of the fact that important applications of Ruby are such as generation HTML files in Web server and construction of documentations in RDoc, I selected tree-like string, Rope, as a target of this project. However, approaches in this project are also applicable to other data structures like List or GapBuffer, and to other class like Arary in Ruby.
 
-<a href="image/array_string.png"> <img src="image/array_string.png" alt="string in array structure" width='100%' height='auto'> </a>
+Here, I will explain merits of Rope in Ruby by taking a look at an existing problem in Ruby .
 
-他の文字列の実装として、木構造の表現であるRope[https://en.wikipedia.org/wiki/Rope_(data_structure)](Wikipedia)というデータ構造があります。(Boehm, Hans-J, Atkinson, Russ, Plass, Michael; 1995)
-最も単純なレパートリーでは、木構造は二分木とし、葉は配列を素朴に使って表現した文字列を、内部ノードは自身を根とする木の葉ノードを左から順に並べた文字列を表現します。
+In Ruby, there are two methods used to concatenate strings.(There is also such method named concat, but it is just an alias of <<.)
+The difference between the two methods is + is non-destructive concatenation while << destructs receiver.
++ is known to hackers who know internals of Ruby as slow, and hence in the case where one can use <<, they use << instead of +.
+However, depending on the result of this project, all the users can achieve the same efficiency of concatenation when using + compared to <<.
 
-<a href="image/rope.png"> <img src="image/rope.png" alt="Rope figure" width='100%' height='auto'> </a>
-
-すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
-
-* ropeが葉の場合 get-string(node) = nodeの文字列
-* そうでない場合 get-string(node) = get-string(nodeの左の子) + get-string(nodeの右の子)
-
-このデータ構造では文字列の削除や結合、部分文字列の取得などの操作を配列による文字列表現の場合と比較して効率的に行うことができます。
-
-このようにデータ構造にはそれぞれ優位な操作がありますが、Rubyの処理系はユーザーに多くのデータ構造を使い分けることを課すデザインになっていません。
-これは最も素朴なデータ構造のうちのひとつであるListがRubyには用意されていないことからも見てとれます。
-Rubyのユーザーは多くの場合、Stack/Queue/List...などのデータ構造の処理を、多用なメソッドを備えたArrayを使って達成します。
-ユーザーは低レベルなデータ構造の選択から解放され、より抽象度の高い仕事において生産性を発揮することができるのです。
-一方で、用途に応じて真に効率的なデータ構造は異なり、それらを適切に使い分けることでより効率的な処理が行えることも事実です。
-
-このプロジェクトでは、従来通りユーザーにはデータ構造を選択する複雑性を意識させることなく、処理系の内部でデータ構造を動的に切り替えることで、ユーザに対して透過的にデータ操作の効率性を提供することを目指しました。
-
-具体的には、文字列の実装として既存の配列ベースのものとは別に、Ropeと呼ばれる木構造による表現を実装し、Ropeが有利な処理が文字列に適用される際には文字列の内部表現を自動的にRopeに切り替えるようにしました。
-Rubyのアプリケーションとして重要な、WebサーバーでのHTMLファイルの生成RDocによるドキュメント生成などを意識し、結合を中心にいくつかの文字列操作が高速に行えるRopeを実装しましたが、ListやGapBufferなど他のデータ構造をStringクラスに実装したり、あるいはArrayクラスにおいても同様の工夫を行ったりすることも今回と同様の方法で可能だと考えています。
-
-ここで、Ropeによる文字列表現の利点のひとつとして、Rubyの既存の実装における問題点を例に挙げ説明をします。
-
-Rubyには文字列の結合を行うためのメソッドとして+と<<の2種類があります。(concatというものもありますが、この実装は<<と同じです。)
-前者は非破壊的に文字列を結合した結果を返すメソッドであり、後者は破壊的に文字列を結合するメソッドです。
-既存の実装においては前者の処理が遅く、<<メソッドを利用することができる場面ではこちらを利用する、というハックがあります。
-このプロジェクトの実装によって、+メソッドを利用した際にも<<メソッドを使用した場合と大差ない性能を透過的に得られるようになりました。
-
-2つの結合を行うメソッドの内部的な振る舞いを説明します。(実際には、短い文字列はオブジェクトの内部に埋め込まれる最適化がRubyでは行われますが、ここでは簡単のため無視しています)
+I will explain in a little more details of these two methods below. (In fact, there is an optimizations which embeds short strings into a string object, and which is known as Copy on Write, however, I will ignore them for simplicity.)
 
 <a href="image/plus_old.png"> <img src="image/plus_old.png" alt="How plus works for now" width='100%' height='auto'> </a>
 
-+メソッドの振る舞いとして、a+bを行うとき、aとbを結合した後の文字列を保持するのに十分なバッファを作成し、そこにa、bの内容をコピーする処理が毎回行われます。
+When one calls a+b, + allocates enough wide buffer to accommodate both a and b, and copies the content of a and b.
 
 <a href="image/concat.png"> <img src="image/concat.png" alt="How concat works" width='100%' height='auto'> </a>
 
-一方で<<メソッドでは、a << bを行うときaの持つバッファにbをコピーします。この際にaが十分なバッファを持っている場合にはbだけがコピーされ、aのバッファが足りない時に限り新たに拡張したバッファを確保し、そこにaとbをコピーする、という処理を行います。
+On the other hand, << copies the content of b into a's buffer. Only when a's buffer cannot accommodate b's content, a new and wider buffer is allocated and then the contents of a and b are copied into extended buffer.
 
-そのため、+では呼び出し回数だけa,bが共にコピーされ、また常に新たなオブジェクトが生成されているのに対して、<<においてはオブジェクトの生成とaのコピーはバッファが不足するときのみ発生することになります。
-バッファの拡張は指数的に行われるため、例えばある文字列を繰り返し末尾に連結する処理におけるコピーされる文字列の量を考えると、+では最終文字列長の二乗オーダーである一方で、<<では高々3倍程度とオーダーレベルで差があります。
+It means that at both a and b are copied and a new object is allocated on every call in + and while they happens only when a's buffer lacks space for b.
+Extension of buffer is exponential; So, assuming that a task is repeatedly appending string of the same length, the quantity of copied strings is on the order of a square of the rusult string in + while at most 3x in <<.
 
-
-ここで、Ropeにおける+演算の説明を行います。
+I will explain how + works in Rope.
 
 <a href="image/plus_rope.png"> <img src="image/plus_rope.png" alt="How rope works" width='100%' height='auto'> </a>
 
-今回の実装ではRopeはimmutableなデータ構造として実装しました。
-Ropeは結合演算の結果を遅延評価するデータ構造と考える事ができます。
-+操作自体は2つのノードを指すポインタを保持するだけなので定数時間で実行できます。
-実際に連結された文字列を取り出すときに木を辿り、葉に入っている文字列を集めた文字列オブジェクトを生成します。
-この処理は実際に配列表現の文字列が必要になった時になってから実行され、最終的な文字列のサイズがわかるため、先ほどの+での結合時に毎回発生していたの文字列のコピーや、<<で必要に応じて行っていたバッファの拡張などが不要になっています。
+In this project, Rope is implemented as an immutable data structure.
+Rope can be considered as a data structure which enables lazy evaluation of the concatenations.
++ operation is done just by getting references of the two nodes, and it is performed efficiently in a constant time complexity.
+Only after the content of a concatenated string is required, one has to traverse all the leave in the Rope, and create the array string.
+In this process, the required length of the output array string is known before traversing, and hence Rope can avoid sequential copies needed in + and buffer extension needed in <<.
 
-他にも部分文字列の取得や、中間文字の削除などの演算もRope表現を持つ文字列に対して適用した場合には計算量的に優位に実行することが可能です。
+Rope can also get and delete substring more efficiently as well compared to array string in the meaning of time complexity.
 
-これまでは、これらの計算量的に優位なデータ構造をユーザーが明示的に利用するためのRope実装は存在していましたが、これはRubyレベルで記述された拡張ライブラリでした。
+There have been the libraries which implemented Rope and have offered it when required explicitly, however these are written in Ruby.
+As part of the result of this project, I implemented Rope extension for Ruby in C, and I also implemented automated-selection mechanism for string representation which enables users to enjoy efficiency of both data structures without awareness or fatigue.
+
 このプロジェクトの成果のひとつとして、C言語での拡張ライブラリの実装を行いました。
 また、ユーザーからみて透過的にRopeが利用される、動的なデータ構造の自動選択をRuby処理系のStringクラスに実装しました。
 

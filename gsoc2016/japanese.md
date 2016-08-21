@@ -55,7 +55,7 @@ Rubyでも現状の文字列の実装はこれを採用しています。
 
 すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
 
-* ropeが葉の場合 get-string(node) = nodeの文字列
+* nodeが葉の場合 get-string(node) = nodeの文字列
 * そうでない場合 get-string(node) = get-string(nodeの左の子) + get-string(nodeの右の子)
 
 このデータ構造では文字列の削除や結合、部分文字列の取得などの操作を配列による文字列表現の場合と比較して効率的に行うことができます。
