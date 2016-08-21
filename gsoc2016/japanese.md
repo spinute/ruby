@@ -43,12 +43,12 @@ parmalink: /japanese/
 言語処理系における文字列のオブジェクトの実装として、連続したメモリ領域(例えばC言語の配列など)を使って文字列を表現するものがあります。
 Rubyでも現状の文字列の実装はこれを採用しています。
 
-<img src="image/array_string_jp.png" alt="string in array structure" width='100%' height='auto'>
+<a href="image/array_string_jp.png"> <img src="image/array_string_jp.png" alt="string in array structure" width='100%' height='auto'> </a>
 
 他の文字列の実装として、木構造の表現であるRope[https://en.wikipedia.org/wiki/Rope_(data_structure)](Wikipedia)というデータ構造があります。(Boehm, Hans-J, Atkinson, Russ, Plass, Michael; 1995)
 最も単純なレパートリーでは、木構造は二分木とし、葉は配列を素朴に使って表現した文字列を、内部ノードは自身を根とする木の葉ノードを左から順に並べた文字列を表現します。
 
-<img src="image/rope_jp.png" alt="Rope figure" width='100%' height='auto'>
+<a href="image/rope_jp.png"> <img src="image/rope_jp.png" alt="Rope figure" width='100%' height='auto'> </a>
 
 すなわち、以下のようにしてRopeによる文字列の表現から配列による文字列の表現への変換が可能です。
 
@@ -77,11 +77,11 @@ Rubyには文字列の結合を行うためのメソッドとして+と<<の2種
 
 2つの結合を行うメソッドの内部的な振る舞いを説明します。(実際には、短い文字列はオブジェクトの内部に埋め込まれる最適化がRubyでは行われますが、ここでは簡単のため無視しています)
 
-<img src="image/plus_old_jp.png" alt="How plus works for now" width='100%' height='auto'>
+<a href="image/plus_old_jp.png"> <img src="image/plus_old_jp.png" alt="How plus works for now" width='100%' height='auto'> </a>
 
 +メソッドの振る舞いとして、a+bを行うとき、aとbを結合した後の文字列を保持するのに十分なバッファを作成し、そこにa、bの内容をコピーする処理が毎回行われます。
 
-<img src="image/concat_jp.png" alt="How concat works" width='100%' height='auto'>
+<a href="image/concat_jp.png"> <img src="image/concat_jp.png" alt="How concat works" width='100%' height='auto'> </a>
 
 一方で<<メソッドでは、a << bを行うときaの持つバッファにbをコピーします。この際にaが十分なバッファを持っている場合にはbだけがコピーされ、aのバッファが足りない時に限り新たに拡張したバッファを確保し、そこにaとbをコピーする、という処理を行います。
 
@@ -91,7 +91,7 @@ Rubyには文字列の結合を行うためのメソッドとして+と<<の2種
 
 ここで、Ropeにおける+演算の説明を行います。
 
-<img src="image/plus_rope_jp.png" alt="How rope works" width='100%' height='auto'>
+<a href="image/plus_rope_jp.png"> <img src="image/plus_rope_jp.png" alt="How rope works" width='100%' height='auto'> </a>
 
 今回の実装ではRopeはimmutableなデータ構造として実装しました。
 Ropeは結合演算の結果を遅延評価するデータ構造と考える事ができます。
@@ -156,14 +156,14 @@ Ropeの利点を活かすために以下のような最適化を実装しまし�
 ここで、Rubyの配列表現の文字列では短い文字列はバイト列としてオブジェクトに対応するCの構造体に直接埋め込む、という最適化があります。
 文字列の先頭あるいは末尾に対して、現在先頭の文字あるいは末尾の文字を含んでいる葉に足しいて埋め込み可能な文字列を追加する際には下の図のような埋め込みによる結合を行うことで木が深くなることを抑制する最適化を実装しました。
 
-<img src="image/embed_optimization_jp.png" alt="optimization for append/prepend of short string" width='100%' height='auto'>
+<a href="image/embed_optimization_jp.png"> <img src="image/embed_optimization_jp.png" alt="optimization for append/prepend of short string" width='100%' height='auto'> </a>
 
 #### String#+以外のメソッドによるRopeの構築
 +以外ではString#\* においてもRopeのまま処理を行うことで繰り返しを遅延する実装をしています。
 引数文字列を組み合わせたり繰り返したりして新たな文字列を生成する他のメソッド(例えばString#\* )においても同様の方法で遅延が可能なはずです。
 あまり役に立つ実例が見つかっていないのですが、大きな文字列を作るが、その一部分しか利用しない場合や、結果文字列の性質のみを知りたい場合、実際の文字列を生成する必要がない利点が生きてくるかもしれません。(例. str * 1000000などをすると、既存の実装ではこの処理の実行時にstrの1000000倍の長さを持つ文字配列が作成されますが、Ropeでは結果の文字列を実際に配列として使うまで、配列は作らず、また例えば文字列長などの性質や部分文字列は実際に文字列全体を作成せずに得る事ができます。)
 
-<img src="image/multi_rope_jp.png" alt="mulitiplication on rope" width='100%' height='auto'>
+<a href="image/multi_rope_jp.png"> <img src="image/multi_rope_jp.png" alt="mulitiplication on rope" width='100%' height='auto'> </a>
 
 #### Ropeに対して直接実行可能なメソッドの実装
 
@@ -175,7 +175,7 @@ Ropeの利点を活かすために以下のような最適化を実装しまし�
 
 今回は部分文字列の取得のみ実装を行いました。
 
-<img src="image/substr_rope_jp.png" alt="substring operation over rope" width='100%' height='auto'>
+<a href="image/substr_rope_jp.png"> <img src="image/substr_rope_jp.png" alt="substring operation over rope" width='100%' height='auto'> </a>
 
 
 ### 性能評価
