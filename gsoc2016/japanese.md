@@ -186,18 +186,20 @@ Ropeの利点を活かすために以下のような最適化を実装しまし�
 * len: 結合する文字列の長さ
 * trial: 試行回数
 
-左の列がtrunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec)での計測結果、右の列がこのプロジェクトの計測結果です。
+いずれも、左の列がtrunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec)での計測結果、右の列がこのプロジェクトの計測結果です。
 
 #### 文字列を倍々にする
+以下の様なプログラムでベンチマークを取りました。
+このベンチマークではある文字列を左右の子とする新たな文字列を生成するので、Ropeの木が完全にバランスします。
 
 ```ruby
 # String(concat)
 e = String.new "a"*len
-x.times { e << e }
+n.times { e << e }
 
 # String(plus)
 e = String.new "a"*len
-x.times { e += e }
+n.times { e += e }
 ```
 
 <a href="image/double_concat_trunk_only.png"><img src="image/double_concat_trunk_only.png" alt="experiment: double trunk stirng" width='45%' height='auto'></a>
@@ -209,14 +211,14 @@ Ropeの結果(右のグラフの緑色の結果)を比較すると他の結果�
 続いては、上の処理に加えて、結合後の文字列に対して配列文字列を必要とする処理を実行するベンチマークです。
 
 ```ruby
-# String(concat)
+# String(concat)+inspect
 e = String.new "a"*len
-x.times { e << e }
+n.times { e << e }
 e.inspect
 
-# String(plus)
+# String(plus)+inspect
 e = String.new "a"*len
-x.times { e += e }
+n.times { e += e }
 e.inspect
 ```
 
@@ -226,13 +228,36 @@ e.inspect
 この結果を見てみると、先の実験ではRopeの結合処理が高速であった点が、この実験結果では隠れていることがわかるかと思います。
 
 #### 一定の長さの文字列を末尾に結合していく
+このベンチマークでは、文字列を末尾に結合していきます。
+この場合、Ropeの木は左に傾いた木になります。
 
-<a href="image/append_concat_rope1.png"><img src="image/append_concat_rope1.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_trunk1.png"><img src="image/append_concat_trunk1.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope2.png"><img src="image/append_concat_rope2.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_trunk2.png"><img src="image/append_concat_trunk2.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope3.png"><img src="image/append_concat_rope3.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_trunk3.png"><img src="image/append_concat_trunk3.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+```ruby
+# String(concat)
+s = String.new "a"*len
+n.times { e << s }
+e.inspect  # +inspectの場合
+
+# String(plus)
+s = String.new "a"*len
+n.times { e += s }
+e.inspecta # +inspectの場合
+```
+
+1つ目の結果は短い文字列(len=1)を末尾に追記することを繰り返した結果です。
+
+<a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+
+2つ目の結果は長い文字列(len=30)を末尾に追記することを繰り返した結果です。(実行回数trialを少なめにしています)
+
+<a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+
+結果を見ると、左の列(trunkでの比較)では<<に対して+の実行時間が非常に大きいことがわかります。
+このため、現在のRubyユーザーの知見として、"+は遅いので<<を使う"ということになっています。
+
+一方で、右の列(Rope実装後の比較)では、短い文字列の場合ではtrunkと比べると<<と+の差が小さくなっていることがわかります。
+大きい文字列の場合には、trunkでは緑と黄色の列(+)と紫と青の列(<<)で結果が大きく離れていたのに対して、Ropeの結果では青と黄色(+と<<にinspectを加えたもの)、緑と紫(+と<<)で似た結果になっていることがわかり、Ropeの実装によって+においても<<に近い性能が得られるようになっていることがわかります。
 
 ### まとめと課題
 Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処理系のStringクラスに実装しました。
