@@ -101,17 +101,17 @@ Rope can also get and delete substring more efficiently as well compared to arra
 There have been the libraries which implemented Rope and have offered it when required explicitly, however these are written in Ruby.
 As part of the result of this project, I implemented Rope extension for Ruby in C, and I also implemented automated-selection mechanism for string representation which enables users to enjoy efficiency of both data structures without awareness or fatigue.
 
-このプロジェクトの成果のひとつとして、C言語での拡張ライブラリの実装を行いました。
-また、ユーザーからみて透過的にRopeが利用される、動的なデータ構造の自動選択をRuby処理系のStringクラスに実装しました。
-
 <a name='rope-extension'></a>
 
 ## Ruby Rope C extension and experimental automatic selection class
-TODO: merge japanese.md
-
 Firstly, I implemented Rope as an extension written in C.
 The purpose of this implementation is prototyping; I was novice to Ruby's internal before the project, so I divided complexities in the implementation of Rope string and the modification of the behavior of Ruby.
-I implemented Rope by not using Garbage Collector in Ruby core but by using reference count which I prepared by myself for simplicity.
+
+I used CData type which wrap C structure as Ruby object. The members of Rope structure are pointers for right/left child and a length of the subtree whose root is the object.
+This implementation offers functions seen in <https://github.com/spinute/CRope/blob/master/ext/rope/rope.h>.
+As basic string operations, concatenation, substring, indexing, deletion, and iteration over string are supported. RopeToString is prepared in order to obtain array string from rope string.
+
+I implemented Rope by *NOT* using Garbage Collector in Ruby core but by using reference count which I prepared by myself for simplicity, as this implementation is prototyping.
 However, reference counting visits all the nodes in a tree when calling concat or delete methods, and hence these methods become slower than that of ideal time complexity of Rope data structure.
 The purpose of prototyping is to ensure the possibility of the project, and I succeeded to evaluate the performance of the ideal implementation of Rope by turning off the reference counting, meaning this extension includes memory leaks for accomplishing ideal performance, and it is the reason why I did not provide its extension as RubyGem (Package Management System for Ruby Language).
 I decided to leave this problem because I tried implementing Rope string into Ruby interpreter itself and the problem automatically vanished by using Garbage Collector in Ruby.
