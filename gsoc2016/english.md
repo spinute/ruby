@@ -290,37 +290,36 @@ I implemented patches for both behaviors, and reported this implementation in a 
 
 <a name='hashtable'></a>
 
-## Rubyの内部で使用されているハッシュテーブルの実装の改良提案のベンチマーク実装
+## Benchmark of another implementations of Ruby's internal hashtable 
 
 <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
 
-このプロジェクト期間の最後の1週間ほどで、<https://bugs.ruby-lang.org/issues/12142>の追加評価を試みました。
+In the last one week, of this project, I tried to implement benchmarks for <https://bugs.ruby-lang.org/issues/12142>.
 
-このissueは、RubyのHashクラスに加え、内部実装でも利用されているハッシュテーブルを改良しようという提案です。
-まず、Vladimir Makarov氏がOpen Addressingを使った実装を公開し、議論を行う中で、Yura Sokolov氏がopen addressingを利用せずに先の実装に近い性能を出す別の実装を公開しており、2つの実装と既存の実装との評価比較が待たれている状態です。
-両者とも数ヶ月の議論を経て実装が洗練されてきており、Rubyへのマージされる意義の高い提案だと考え、最後の1週間でこの作業に取り組むことにしました。
+This issue is to improve hashtable used for both Hash class in Ruby and other internal usages.
+There are two new implementation posted by Vladimir Makarov and Yura Sokolov, the former uses open-addressing while the latter not.
+Both implementations seem to get sophisticated while discussion over a several month, and to work better than present implementation and to be competitive with each other.
+These works seems valuable to be merged, though they lack a little; So I tried to implement more benchmarks for evaluation to promote merge.
 
-現在、Rubyに付属するベンチマークに既にいくつかの処理がRubyでいくつかシナリオが記述されており、両実装のこの結果は既に投稿されています。
-これに加え、ハッシュテーブル自体の単一の操作の性能評価をするベンチマークを書くと、より定量的な評価に基づく議論が可能になるのではないかということで、このベンチマークを実装することにしました。
+For now, there are several benchmarks attached to Ruby which is written in Ruby and call Hash operations repeatedly, and these results have already been posted in the thread.
+In addition to this results, the performances of basic operations in C level not Ruby level should be measured for more precise evaluation, and hence I decided to implement such benchmarks.
 
-実装としては、Rubyの拡張ライブラリとしてベンチマークを行うためクラスを作り、そこからCで記述したシナリオをRubyレベルで渡したパラメータで選び、ベンチマークの実行はCの関数で完結するように書いてあります。ちなみに拡張ライブラリとして実装することにしたのは、Rubyのソースコードと結合のあるRubyのハッシュテーブルのコード(st.c)のビルドを簡単に行うためです。
+I implemented STBench extension which includes partials of scenarios written in C, and STBench can select a scenario by following parameters. As a note, I implemented it as an extension to build the code easily while the implementations of hashtable(st.c) uses Ruby internal codes.
 
-<https://github.com/spinute/ruby/blob/stbench/ext/stbench/stbench.c>にSTBenchクラスの実装が記述されています。
-全てのベンチマークは~\_setup -> ~\_run -> ~\_cleanupという3段階の処理で実装されており、この順で実行されることを想定しています。(使い方の例は後述します。)
+The implementation of STBench class is in <https://github.com/spinute/ruby/blob/stbench/ext/stbench/stbench.c>.
+All the benchmark follows the similar process, ~\_setup -> ~\_run -> ~\_cleanup, and it is assumed to call in order.(Usage is written below.)
 
-現状の機能としては、
+Parameters(for now)
 
-* 処理回数
-* テーブルの初期サイズ
-* キーの種類 := 整数、(長い、短い)文字列
-* キーの選択 := 全て同じもの、全て別のもの、母集団からランダムに選ぶ
-* オペレーション := insert、delete、search、テーブルの初期化&削除
+* Scale of benchmark
+* Initial size of hashtable
+* type of keys := integer, (long or short) string
+* selection of keys := same, different, random
+* operation := insert, delete, search, init/fini
 
-の組み合わせについてベンチマークを実行できるようにしました。
+Results are reported in time lapse, and Max RSS before&after benchmarking.
 
-計測しているのは実行時間と、ベンチマーク前後のMax RSSです。
-
-ベンチマークを実行するプログラムの例は以下のようになります。
+Example of benchmark script is below.
 
 ```ruby
 # Set benchmark parameter
@@ -336,7 +335,7 @@ end
 Process.waitpid pid
 ```
 
-下のような結果が出ます。
+The result is like below.
 
 <pre>
 Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keylen=5
@@ -344,16 +343,16 @@ Insert bench: keytype=num,    pattern=rand,   scale=10,    ht_init_size=0, keyle
   before:    4730880, after:   39747584, diff  35016704
 </pre>
 
-ベンチマーク結果の読み方は、一行目がパラメータで以下の
+First line reports parameters of the benchmark.
 
-* キーは整数でランダムに生成する
-* 10 * 00000回挿入を行う
-* テーブルの初期サイズは未指定
+* Keys are randomly inserted
+* 10 * 100000 times (100000 is a base of scale)
+* Initial size of hashtable is not specified
 
-二行目が実行時間です。(Rubyレベルでbenchmarkライブラリを使って計測しています。)
+Second line reports time lapse, which is measured "benchmark" library in Ruby.
 
-三行目がgetrusage(2)で取得したMax RSS(初期化完了時、ベンチマーク完了後、その差分)です。
+Third line reports Max RSS(after initialization, after benchmarking, and the increment), measured by getrusage(2).
 
-<https://github.com/spinute/ruby/blob/stbench/ext/stbench/bench.rb>ベンチマークを一通りのパラメータの組み合わせに対して実行するサンプルプログラムが記述してあります。
+A script to run benchmarks for a set of parameters is in <https://github.com/spinute/ruby/blob/stbench/ext/stbench/bench.rb>.
 
-ハッシュテーブルのAPIに含まれているforearch系の関数に対してのベンチマークも実装し、各パッチと既存の実装とのベンチマークを取り、実装者達の意見を伺いながら評価に必要な項目を追加するのは今後の課題です。
+Remained tasks are to implement another benchmark for foreanch, and to measure performances of two new implementations and old implementation, and post results to developers, and add another scenarios or refine benchmarks.
