@@ -119,26 +119,23 @@ I decided to leave this problem because I tried implementing Rope string into Ru
 <a name='rope-string'></a>
 
 ## Implementation of Rope into Ruby core
-TODO: merge japanese.md
+After prototyping stated above, I implemented Rope into String class of Ruby interpreter.
+I used a flag of a Ruby object to express that the object is Rope.(Used FL_USER_0 as STR_IS_ROPE)
 
-At last, I implemented Rope into String class of Ruby interpreter.
-When String#concat is called, a state of String object changes into Rope.
-On the other hand, when string as an array is needed, Rope string is converted into array string automatically.
+When String#+ is called and the length of the output is larger than the maximum embeddable length of string object in Ruby, a state of output String object is set to Rope.
+At the time, if some operands of + are mutable, a new objects which have the same content of the mutable operand but is immutable will be created, and created rope will have the references of the immutable objects as left and right child.
+In other words, though Ruby string object is generally not immutable, Rope is immutable object and leaves are made to be immutable.
+After that, when array string is needed, Rope string is converted into array string.
 
-As a note, in my proposal, I thought of the problem in wider scope.
-The efficiency of the operation is determined by the state of the data, and its expression as a data structure.
-For example, to hold sequence of characters, when Array is used then random accessing by index is performed efficiently, on the other hand, when List is used then insertion or deletion of internal characters is efficient, while its not efficient in Array case.
-Ruby has offered Array as universal data structure, and not offer other normal data structures such as List, Queue, Stack.
-This design is easy to use and provides users with concentration on their high level tasks, however, sometimes it is proved to be inefficient.
-The goal of this project is to develop a mechanism which uses multiple data structures internally and switches them dynamically, and, on the other hand, which looks just a normal object for users.
+A construction of Rope by + can be considered as lazy processing of concatenation.
+As mentioned before, << and present implementation of + process a concatenation at every operation.
+On the other hands, + over Rope will concatenate array strings only after the concatenated string are required, and hence + of Rope runs quite fast not depending on the length of operands.
 
-During a life of an object
+Besides, I optimized Rope implementation like below.
 
-Ropeの利点を活かすために以下のような最適化を実装しました。
-
-1. 先頭あるいは末尾に埋め込み可能な文字列を追加する際にて新たにノードを追加しない
-2. String#+以外のメソッドによるRopeの構築
-3. Ropeに対して直接実行可能なメソッドの実装
+1. When appending/prepending an embeddable string to tail/head of a Rope string, not to add a new object into the Rope but embed the short string into the tail/head node of the Rope.
+2. Construct Rope by methods other than String#+
+3. Implementation of string methods which directly work on Rope strings
 
 #### 先頭あるいは末尾に埋め込み可能な文字列を追加する際には埋め込みを行う
 実際のアプリケーションの中で多くある文字列の結合の仕方として、末尾に短い文字列を結合することを繰り返す、というものです。
@@ -194,8 +191,8 @@ e = String.new "a"*len
 n.times { e += e }
 ```
 
-<a href="image/double_concat_trunk_only.png"><img src="image/double_concat_trunk_only.png" alt="experiment: double trunk stirng" width='45%' height='auto'></a>
-<a href="image/double_concat_rope_only.png"><img src="image/double_concat_rope_only.png" alt="experiment: double rope stirng" width='45%' height='auto'></a>
+<a href="image/double_concat_trunk_only.png"><img src="image/double_concat_trunk_only.png" alt="experiment: trunk double stirng" width='45%' height='auto'></a>
+<a href="image/double_concat_rope_only.png"><img src="image/double_concat_rope_only.png" alt="experiment: rope double stirng" width='45%' height='auto'></a>
 
 Ropeの結果(右のグラフの緑色の結果)を比較すると他の結果と比べて極めて小さな時間で実行できているのがわかると思います。
 これはRopeの結合処理では文字列の参照を取得するだけであるのに対して、trunkの実装では結合字に結果文字列を実際に作成しているためです。
@@ -214,8 +211,8 @@ n.times { e += e }
 e.inspect
 ```
 
-<a href="image/double_concat_trunk.png"><img src="image/double_concat_trunk.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
-<a href="image/double_concat_rope.png"><img src="image/double_concat_rope.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
+<a href="image/double_concat_trunk.png"><img src="image/double_concat_trunk.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
+<a href="image/double_concat_rope.png"><img src="image/double_concat_rope.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
 この結果を見てみると、先の実験ではRopeの結合処理が高速であった点が、この実験結果では隠れていることがわかるかと思います。
 
@@ -237,13 +234,13 @@ e.inspecta # +inspectの場合
 
 1つ目の結果は短い文字列(len=1)を末尾に追記することを繰り返した結果です。
 
-<a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
 2つ目の結果は長い文字列(len=30)を末尾に追記することを繰り返した結果です。(実行回数trialを少なめにしています)
 
-<a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
 結果を見ると、左の列(trunkでの比較)では<<に対して+の実行時間が非常に大きいことがわかります。
 このため、現在のRubyユーザーの知見として、"+は遅いので<<を使う"ということになっています。
@@ -269,8 +266,6 @@ Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処
 <a name="issue12333"></a>
 
 ## Post patches for issue#12333
-TODO: merge japanese.md
-
 During my Community Bounding Period, I read two books ["Ruby Hacking Guide"](https://ruby-hacking-guide.github.io/) and ["Ruby Under a Microscope"](https://www.nostarch.com/rum), and official online resources such as [Ruby C API reference](http://docs.ruby-lang.org/en/trunk/extension_rdoc.html), [Ruby Wiki](https://bugs.ruby-lang.org/projects/ruby/wiki/).
 
 After that I selected an issue posted in [Bug Tracker System of Ruby](https://bugs.ruby-lang.org/issues) at the perspective of having relations with the topic in this project without going too complicated.

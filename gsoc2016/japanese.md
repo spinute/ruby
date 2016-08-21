@@ -248,13 +248,13 @@ e.inspecta # +inspectの場合
 
 1つ目の結果は短い文字列(len=1)を末尾に追記することを繰り返した結果です。
 
-<a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: trunk append short stirng" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: rope append short stirng" width='45%' height='auto'></a>
 
 2つ目の結果は長い文字列(len=30)を末尾に追記することを繰り返した結果です。(実行回数trialを少なめにしています)
 
-<a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: double rope stirng with inspect" width='45%' height='auto'></a>
-<a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: double trunk stirng with inspect" width='45%' height='auto'></a>
+<a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: trunk append long stirng" width='45%' height='auto'></a>
+<a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: rope append long stirng" width='45%' height='auto'></a>
 
 結果を見ると、左の列(trunkでの比較)では<<に対して+の実行時間が非常に大きいことがわかります。
 このため、現在のRubyユーザーの知見として、"+は遅いので<<を使う"ということになっています。
