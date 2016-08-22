@@ -133,47 +133,46 @@ On the other hands, + over Rope will concatenate array strings only after the co
 
 Besides, I optimized Rope implementation like below.
 
-1. When appending/prepending an embeddable string to tail/head of a Rope string, not to add a new object into the Rope but embed the short string into the tail/head node of the Rope.
+1. Embed short append/prepend into tail/head of Rope
 2. Construct Rope by methods other than String#+
 3. Implementation of string methods which directly work on Rope strings
 
-#### 先頭あるいは末尾に埋め込み可能な文字列を追加する際には埋め込みを行う
-実際のアプリケーションの中で多くある文字列の結合の仕方として、末尾に短い文字列を結合することを繰り返す、というものです。
-文書を先頭から順に構築して行ったり、行を結合して改行記号を結合してという処理を考えるとこれは多くの実アプリケーションで現れています。
+#### Embed short append/prepend into tail/head of Rope
+In real applications which heavily uses strings, it really often appear to append short strings repeatedly to construct large strings.
+For example, constructing a document from beginning or concatenating lines and appending a new line characters follows the pattern, and it is what WebServers or Documentation tools do, and these are some of the most important applications of Ruby language.
 
-このようなとき、Ropeの+演算で木を構築すると、左に非常に傾いた木ができてしまい、処理の効率がよくありません。
-ここで、Rubyの配列表現の文字列では短い文字列はバイト列としてオブジェクトに対応するCの構造体に直接埋め込む、という最適化があります。
-文字列の先頭あるいは末尾に対して、現在先頭の文字あるいは末尾の文字を含んでいる葉に足しいて埋め込み可能な文字列を追加する際には下の図のような埋め込みによる結合を行うことで木が深くなることを抑制する最適化を実装しました。
+In these construction pattern, naive implementation of + on Rope generate an unbalanced tree, and the tree cannot perform efficiently.
+Ruby has already had optimization to embed short string into an object itself(structure in C language) as a sequence of bytes.
+I implemented Rope to embed the short string into its tail/head not to add a new object into the Rope but to prevent the tree from getting deeper when appending/prepending an embeddable string to tail/head of a Rope string, depicted in the figure below.
 
 <a href="image/embed_optimization.png"> <img src="image/embed_optimization.png" alt="optimization for append/prepend of short string" width='100%' height='auto'> </a>
 
-#### String#+以外のメソッドによるRopeの構築
-+以外ではString#\* においてもRopeのまま処理を行うことで繰り返しを遅延する実装をしています。
-引数文字列を組み合わせたり繰り返したりして新たな文字列を生成する他のメソッド(例えばString#\* )においても同様の方法で遅延が可能なはずです。
-あまり役に立つ実例が見つかっていないのですが、大きな文字列を作るが、その一部分しか利用しない場合や、結果文字列の性質のみを知りたい場合、実際の文字列を生成する必要がない利点が生きてくるかもしれません。(例. str * 1000000などをすると、既存の実装ではこの処理の実行時にstrの1000000倍の長さを持つ文字配列が作成されますが、Ropeでは結果の文字列を実際に配列として使うまで、配列は作らず、また例えば文字列長などの性質や部分文字列は実際に文字列全体を作成せずに得る事ができます。)
+#### Construct Rope by methods other than String#+
+It is possible to create Rope string by other methods than String#+ which produce a new string by combining of repeating operands.
+For now, I only implemented String#\* which repeats provided string as generating Rope string in order to achieve lazy array string generation.
+
+I am not sure how useful it is in real applications, but in scenarios where one generates large string by such a method like + or * and uses some part of the string or some properties which not always needs a whole array string, this optimization would be effective because a generation of a large string will not performed. (e.g. Thinking str * 1000000, the large string will be created when * being called in present implementation, while the optimized Rope will not create the large array string until required though it can still offer us some properties of the string such as the length or it is also possible to create substring of the string.)
 
 <a href="image/multi_rope.png"> <img src="image/multi_rope.png" alt="mulitiplication on rope" width='100%' height='auto'> </a>
 
 #### Ropeに対して直接実行可能なメソッドの実装
 
-下に述べる性能評価を見るとわかるように、大きな文字列に対応するRopeは、結合による構築は非常に高速ながら、配列形式の文字列への変換に大きなコストがかかっていることがわかります。
-最終的に文字列の全体が必要ない場合には、Ropeに対してそのまま処理を施すことができるメソッド。
+As the evaluations below implies, to construct a large string in Rope is quite fast, however, to convert the Rope into array string consumes much time.
+In case where a whole concatenated string is not used at last, if some methods can perform over Rope directly, it enables save us from conversion of unused part of the rope into array string.
 
-このような最適化が可能なメソッドの例としては、部分文字列の取得や文字毎の繰り返し処理などがあります。
-これを行うためには、Stringクラスのメソッドに対して、オブジェクトがRopeであった際に配列文字列の場合と等価な結果を計算する処理を実装する必要があります。
-
-今回は部分文字列の取得のみ実装を行いました。
+To enable this optimization, it is needed to modify methods in String class to apply operations over rope in order to get the equivalent result to that of over array string which is now implemented.
+For now, I only implemented substring method for this optimization, though other methods such as indexing, iteration over Rope, capitalizing ...etc. can also be implemented in the same way.
 
 <a href="image/substr_rope.png"> <img src="image/substr_rope.png" alt="substring operation over rope" width='100%' height='auto'> </a>
 
 
-### 性能評価
+### Evaluation
 
-実験のパラメータはグラフのタイトルに埋め込んであります。
+Parameters of the experiments are embedded into a title of graphs.
 
-* size: 実験のスケール
-* len: 結合する文字列の長さ
-* trial: 試行回数
+* size: the scale of experiment
+* len: the length of initial concatenated string
+* trial: the number of measurement repeated
 
 いずれも、左の列がtrunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec)での計測結果、右の列がこのプロジェクトの計測結果です。
 
