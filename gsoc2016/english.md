@@ -174,11 +174,11 @@ Parameters of the experiments are embedded into a title of graphs.
 * len: the length of initial concatenated string
 * trial: the number of measurement repeated
 
-いずれも、左の列がtrunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec)での計測結果、右の列がこのプロジェクトの計測結果です。
+In each results, left column is for trunk(e5c6454efa01aaeddf4bc59a5f32d5f1b872d5ec), while right is for this project.
 
-#### 文字列を倍々にする
-以下の様なプログラムでベンチマークを取りました。
-このベンチマークではある文字列を左右の子とする新たな文字列を生成するので、Ropeの木が完全にバランスします。
+#### Case: Double a string
+A program below is for this benchmark.
+In this benchmark, a string is repeatedly doubled, and ropes produced are perfectly balanced.
 
 ```ruby
 # String(concat)
@@ -193,10 +193,10 @@ n.times { e += e }
 <a href="image/double_concat_trunk_only.png"><img src="image/double_concat_trunk_only.png" alt="experiment: trunk double stirng" width='45%' height='auto'></a>
 <a href="image/double_concat_rope_only.png"><img src="image/double_concat_rope_only.png" alt="experiment: rope double stirng" width='45%' height='auto'></a>
 
-Ropeの結果(右のグラフの緑色の結果)を比較すると他の結果と比べて極めて小さな時間で実行できているのがわかると思います。
-これはRopeの結合処理では文字列の参照を取得するだけであるのに対して、trunkの実装では結合字に結果文字列を実際に作成しているためです。
+It can be seen that the result of Rope(a green line in the right graph) run extremely fast compared to other results.
+It reflects the fact that concatenation on Rope is done by just getting references of operands, while in trunk concatenation operations create actual array string when called.
 
-続いては、上の処理に加えて、結合後の文字列に対して配列文字列を必要とする処理を実行するベンチマークです。
+The next benchmark includes an additional process which requires array string to the previous benchmark.
 
 ```ruby
 # String(concat)+inspect
@@ -213,11 +213,11 @@ e.inspect
 <a href="image/double_concat_trunk.png"><img src="image/double_concat_trunk.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
 <a href="image/double_concat_rope.png"><img src="image/double_concat_rope.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
-この結果を見てみると、先の実験ではRopeの結合処理が高速であった点が、この実験結果では隠れていることがわかるかと思います。
+It can be seen from the results, the effectiveness of concatenation on Rope string is hidden behind a requirement of the array string in this experiment.
 
-#### 一定の長さの文字列を末尾に結合していく
-このベンチマークでは、文字列を末尾に結合していきます。
-この場合、Ropeの木は左に傾いた木になります。
+#### Case: append a constant string
+A program below is for this benchmark.
+In this benchmark, a string is repeatedly appended to another string, and ropes produced deeply lean to left.
 
 ```ruby
 # String(concat)
@@ -231,31 +231,35 @@ n.times { e += s }
 e.inspecta # +inspectの場合
 ```
 
-1つ目の結果は短い文字列(len=1)を末尾に追記することを繰り返した結果です。
+First result is for the case where appended string is short(len = 1).
+In this case, short string is an embedded string.
 
 <a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
 <a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
-2つ目の結果は長い文字列(len=30)を末尾に追記することを繰り返した結果です。(実行回数trialを少なめにしています)
+Second result is for the case where appended string is long(len = 30).(The number of trial is set to small number)
+In this case, short string is not an embedded string.
 
 <a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: trunk double stirng with inspect" width='45%' height='auto'></a>
 <a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: rope double stirng with inspect" width='45%' height='auto'></a>
 
-結果を見ると、左の列(trunkでの比較)では<<に対して+の実行時間が非常に大きいことがわかります。
-このため、現在のRubyユーザーの知見として、"+は遅いので<<を使う"ということになっています。
+From the results, it can be seen that in the left column(the result of trunk) the time lapse of + is quite large compared to that of <<.
+This leads to the mystic insight of Ruby users which says "+ is slow, use <<".
 
-一方で、右の列(Rope実装後の比較)では、短い文字列の場合ではtrunkと比べると<<と+の差が小さくなっていることがわかります。
-大きい文字列の場合には、trunkでは緑と黄色の列(+)と紫と青の列(<<)で結果が大きく離れていたのに対して、Ropeの結果では青と黄色(+と<<にinspectを加えたもの)、緑と紫(+と<<)で似た結果になっていることがわかり、Ropeの実装によって+においても<<に近い性能が得られるようになっていることがわかります。
+On the other hands, in the right columns(after implementation of Rope), the result is different.
+In short string case, the difference between << and + becomes smaller.
+And in long string case, << and + are almost the same.
+In trunk, the green line and yellow line(for +) accompanies, while purple and blue(for <<). On the other hand, in Rope result blue line and yellow line(+ and << with inspect) looks similar while green and purple go together, which means that Rope implementation enables + to achieve similar performance as <<.
 
-### まとめと課題
-Rope文字列の実装を拡張ライブラリとして実装した後、Ruby処理系のStringクラスに実装しました。
-結合処理は定数時間で実行できることを確認し、既存の+メソッドによる文字列の結合の性能を改善することを確認しました。
+### Conclusion and remained problems
+I implemented C extension of Rope for Ruby language as a prototyping, and implemented Rope into Ruby String class and dynamic implementation selection mechanism.
+I confirmed the efficiency of concatenation, and it solves the known performance problem of +.
 
-実験結果をみると、結合処理自体はRopeで行うのが圧倒的に早いにもかかわらず、配列表現の結果文字列全体を最終的に必要とするような用途では、Ropeと配列表現の文字列の変換コストによって<<とRope上の+の差がない、という結果になっています。
-2,3つめの最適化について、今回は限られた数のメソッドしか実装することができていませんが、実装したメソッドの他にも最適化が可能なメソッドがあり、Ropeとして大きな文字列を作り、Ropeのままで文字列を処理してから比較的小さな結果文字列を得られるような実用的なシナリオがあれば、Ropeを導入しなければ達成できない高速化が達成できるのではないかと考えています。
-実際のアプリケーションの中で、大きなRope文字列に対して適用されることの多いメソッド調査し、その効率的なRope実装が可能であれば行うことは最適化の可能性としてやり残されています。
+According to the evaluation, concatenation itself is done in a moment but when array expression of output string is needed, a cost of conversion from Rope to array prevent + of Rope from surpassing <<.
+Second and third optimization stated above is partially done in this project(I could only implemented a little numbers of method), however, there would be other possible optimized methods, and by the optimization it would become possible to construct diversity large strings as Rope and to process or filter the string as Rope, and to get the smaller output string compared to input string or intermediate strings; In this scenario, Rope allow us not to create large array string and it may follow large improvement in both performance and memory.
+For this ambition, it is needed to survey the frequent sequences for large string processing in real applications. If these methods are possible to be implemented effectively in Rope(or other data structures) there are possible optimization by applying the approach taken in this project.
 
-残された問題点としてテストケース(make test-all)のうち、以下のものがまだ安定して通過していません。([implement_ropeブランチ: 250deede](https://github.com/spinute/ruby/commit/250deedef4bf253238f53559db26cd9c4793b6ec), OSX 10.9.5にて実行)
+One of the problem remained is that test cases (by running make test-all) below sometimes fail.  (at [implement_rope branch: 250deede](https://github.com/spinute/ruby/commit/250deedef4bf253238f53559db26cd9c4793b6ec), on OSX 10.9.5)
 
 * TestSocket_UDPSocket#test_send_no_memory_leak(test/socket/test_udp.rb:94)
 * TestProcess#test_deadlock_by_signal_at_forking(test/test_process.rb:2103)

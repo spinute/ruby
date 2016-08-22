@@ -210,7 +210,7 @@ n.times { e += e }
 <a href="image/double_concat_rope_only.png"><img src="image/double_concat_rope_only.png" alt="experiment: double rope stirng" width='45%' height='auto'></a>
 
 Ropeの結果(右のグラフの緑色の結果)を比較すると他の結果と比べて極めて小さな時間で実行できているのがわかると思います。
-これはRopeの結合処理では文字列の参照を取得するだけであるのに対して、trunkの実装では結合字に結果文字列を実際に作成しているためです。
+これはRopeの結合処理では文字列の参照を取得するだけであるのに対して、trunkの実装では結合時に結果文字列を実際に作成しているためです。
 
 続いては、上の処理に加えて、結合後の文字列に対して配列文字列を必要とする処理を実行するベンチマークです。
 
@@ -248,11 +248,13 @@ e.inspecta # +inspectの場合
 ```
 
 1つ目の結果は短い文字列(len=1)を末尾に追記することを繰り返した結果です。
+このケースでは、短い文字列は先に述べた埋め込み文字列となっています。
 
 <a href="image/append_concat_trunk_short.png"><img src="image/append_concat_trunk_short.png" alt="experiment: trunk append short stirng" width='45%' height='auto'></a>
 <a href="image/append_concat_rope_short.png"><img src="image/append_concat_rope_short.png" alt="experiment: rope append short stirng" width='45%' height='auto'></a>
 
 2つ目の結果は長い文字列(len=30)を末尾に追記することを繰り返した結果です。(実行回数trialを少なめにしています)
+このケースでは、短い文字列は先に述べた埋め込み文字列にはなっていません。
 
 <a href="image/append_concat_trunk_long.png"><img src="image/append_concat_trunk_long.png" alt="experiment: trunk append long stirng" width='45%' height='auto'></a>
 <a href="image/append_concat_rope_long.png"><img src="image/append_concat_rope_long.png" alt="experiment: rope append long stirng" width='45%' height='auto'></a>
