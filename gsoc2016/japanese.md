@@ -19,6 +19,7 @@ parmalink: /japanese/
 * その他
   * [issue#12333: RubyのArray, Stringクラスのprepend, concatを多引数化するパッチの実装](#issue12333)
     * Issue: <https://bugs.ruby-lang.org/issues/12333> にて議論を行い、考えられる幾つかの実装パッチを投稿しています
+    * (8月27日更新) trunkにマージされました->[r56021](https://bugs.ruby-lang.org/projects/ruby-trunk/repository/revisions/56021/entry/ChangeLog)
   * [Rubyのハッシュテーブルの改良提案の評価のためのベンチマーク実装(作業途中)](#hashtable)
     * Githubレポジトリ: <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
     * このプロジェクトの一環として作られたレポジトリです

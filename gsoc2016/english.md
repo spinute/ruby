@@ -21,6 +21,7 @@ Proposal: [Automatic-selection mechanism for data structures in MRI](https://sum
 * Other works
   * [Implement patches for Ruby core which enables concat and prepend methods in Array and String class to take multiple arguments](issue12333)
     * <https://bugs.ruby-lang.org/issues/12333> (3 patches are posted)
+    * (update: Aug. 27) It was merged into trunk as [r56021](https://bugs.ruby-lang.org/projects/ruby-trunk/repository/revisions/56021/entry/ChangeLog)
   * [Merge a well-tuned hashtable into Ruby core (in progress)](#hashtable)
     * <https://github.com/spinute/ruby/tree/stbench/ext/stbench>
     * The whole repository is for this project
